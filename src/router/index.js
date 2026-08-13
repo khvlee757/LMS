@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory } from 'vue-router';
 
 const routes = [
   {
@@ -16,6 +16,11 @@ const routes = [
     component: () => import('../views/Login.vue'),
   },
   {
+    path: '/admin-login',
+    name: 'admin-login',
+    component: () => import('../views/AdminLogin.vue'),
+  },
+  {
     path: '/welcome',
     name: 'welcome',
     component: () => import('../views/Welcome.vue'),
@@ -30,11 +35,32 @@ const routes = [
     name: 'dashboard',
     component: () => import('../views/Dashboard.vue'),
   },
-]
+  {
+    path: '/admin-dashboard',
+    name: 'admin-dashboard',
+    component: () => import('../views/AdminDashboard.vue'),
+  },
+];
 
 const router = createRouter({
   history: createWebHistory(),
   routes,
-})
+});
 
-export default router
+router.beforeEach((to, from, next) => {
+  const role = localStorage.getItem('lmsRole');
+
+  if (to.path === '/admin-dashboard' && role !== 'admin') {
+    next('/admin-login');
+    return;
+  }
+
+  if (to.path === '/admin-login' && role === 'admin') {
+    next('/admin-dashboard');
+    return;
+  }
+
+  next();
+});
+
+export default router;
