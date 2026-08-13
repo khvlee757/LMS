@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from "vue";
 import { useRouter, useRoute, RouterLink } from "vue-router";
+import Footer from '@/components/footer.vue';
 import icon from "@/assets/book.png";
 
 const router = useRouter();
@@ -385,6 +386,7 @@ const isActive = (path) => {
         <slot />
       </section>
 
+      <Footer />
     </main>
 
   </div>
