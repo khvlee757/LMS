@@ -1,79 +1,391 @@
 <script setup>
-const savedForm = localStorage.getItem('form');
+import { ref } from "vue";
+import { useRouter, useRoute, RouterLink } from "vue-router";
+import icon from "@/assets/book.png";
+
+const router = useRouter();
+const route = useRoute();
+
+const isOpen = ref(true);
+const mobileOpen = ref(false);
+
+const savedForm = localStorage.getItem("form");
 const user = savedForm ? JSON.parse(savedForm) : null;
 
-import icon from '@/assets/book.png';
+const toggleSidebar = () => {
+  isOpen.value = !isOpen.value;
+};
+
+const toggleMobileSidebar = () => {
+  mobileOpen.value = !mobileOpen.value;
+};
+
+const closeMobileSidebar = () => {
+  mobileOpen.value = false;
+};
+
+const logout = () => {
+  localStorage.removeItem("form");
+  router.push("/login");
+};
+
+const isActive = (path) => {
+  return route.path === path || route.path.startsWith(`${path}/`);
+};
 </script>
 
-
 <template>
-  <div class="drawer lg:drawer-open h-screen">
-    <input id="my-drawer-4" type="checkbox" class="drawer-toggle" />
-    <div class="drawer-content">
-        
-      <!-- Navbar -->
-      <nav class="navbar w-full">
-        <label for="my-drawer-4" aria-label="open sidebar" class="btn btn-square bg-primary drawer-button">
-          <!-- Sidebar toggle icon -->
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-linejoin="round" stroke-linecap="round" stroke-width="2" fill="none" stroke="currentColor" class="my-1.5 inline-block size-4"><path d="M4 4m0 2a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z"></path><path d="M9 4v16"></path><path d="M14 10l2 2l-2 2"></path></svg>
-        </label>
-        <div class="px-4">Navbar Title</div>
-      </nav>
-      <!-- Page content here -->
-      <div class="p-4"><slot /></div>
-    </div>
+  <div class="min-h-screen w-full overflow-x-hidden bg-background/50">
 
-    <div class="drawer-side">
-      <label for="my-drawer-4" aria-label="close sidebar" class="drawer-overlay"></label>
-      
-      <div class="flex min-h-full flex-col items-start bg-primary/30 is-drawer-close:w-14 is-drawer-open:w-64">
-        <div class="w-full px-4 mt-3">
-          <img
-            :src="icon"
-            alt="icon"
-            class="w-full h-32 object-cover transition-all duration-200 ease-in-out is-drawer-close:w-10 is-drawer-close:h-10 is-drawer-close:rounded-full is-drawer-close:mx-auto"
-          />
-        </div>
-        <!-- Sidebar content here -->
-        <ul class="menu w-full grow mt-4 px-2 text-lg space-y-3 is-drawer-close:space-y-0 is-drawer-close:gap-2 is-drawer-close:overflow-hidden is-drawer-close:pt-4 is-drawer-close:text-center">
-          <!-- List item -->
-          <li>
-            <button class="is-drawer-close:tooltip is-drawer-close:tooltip-right" data-tip="Homepage">
-              <!-- Home icon -->
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-linejoin="round" stroke-linecap="round" stroke-width="2" fill="none" stroke="currentColor" class="my-1.5 inline-block size-4 transition-transform duration-200 ease-in-out is-drawer-close:scale-90 is-drawer-open:scale-100"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"></path><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
-              <span class="is-drawer-close:hidden">Homepage</span>
-            </button>
-          </li>
+    <div
+      v-if="mobileOpen"
+      @click="closeMobileSidebar"
+      class="fixed inset-0 z-40 bg-black/50 lg:hidden"
+    ></div>
 
-          <!-- List item -->
-          <li>
-            <button class="is-drawer-close:tooltip is-drawer-close:tooltip-right" data-tip="Settings">
-              <!-- Settings icon -->
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-linejoin="round" stroke-linecap="round" stroke-width="2" fill="none" stroke="currentColor" class="my-1.5 inline-block size-4 transition-transform duration-200 ease-in-out is-drawer-close:scale-90 is-drawer-open:scale-100"><path d="M20 7h-9"></path><path d="M14 17H5"></path><circle cx="17" cy="17" r="3"></circle><circle cx="7" cy="7" r="3"></circle></svg>
-              <span class="is-drawer-close:hidden">Settings</span>
-            </button>
-          </li>
+    <aside
+      class="fixed left-0 top-0 z-50 flex h-screen w-72 flex-col overflow-hidden bg-primary text-white shadow-xl transition-[width,transform] duration-300 lg:border-r lg:border-primary/10"
+      :class="[
+        isOpen ? 'lg:w-64' : 'lg:w-20',
+        mobileOpen
+          ? 'translate-x-0'
+          : '-translate-x-full lg:translate-x-0'
+      ]"
+    >
 
-           <li>
-            <button class="is-drawer-close:tooltip is-drawer-close:tooltip-right" >
-              <!-- Settings icon -->
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-linejoin="round" stroke-linecap="round" stroke-width="2" fill="none" stroke="currentColor" class="my-1.5 inline-block size-4 transition-transform duration-200 ease-in-out is-drawer-close:scale-90 is-drawer-open:scale-100"><path d="M20 7h-9"></path><path d="M14 17H5"></path><circle cx="17" cy="17" r="3"></circle><circle cx="7" cy="7" r="3"></circle></svg>
-              <span class="is-drawer-close:hidden">Courses</span>
-            </button>
-          </li>
-        </ul>
+      <div
+        class="flex h-24 shrink-0 items-center border-b border-white/10 px-4"
+        :class="isOpen ? 'justify-between' : 'lg:justify-center'"
+      >
 
-        <div class="w-full p-4 mt-auto">
-          <div class="flex items-center gap-3 mb-3">
-            <div class="flex flex-col">
-              <span class="font-bold text-base">{{ user?.name || 'Guest' }}</span>
-              <span class="text-sm text-muted-foreground">{{ user?.email || 'john.doe@example.com' }}</span>
-            </div>
-          </div>
-          <button class="btn btn-block btn-primary">Logout</button>
-        </div>
+        <img
+          :src="icon"
+          alt="LMS"
+          class="rounded-2xl object-cover transition-all duration-300"
+          :class="isOpen ? 'h-20 w-20' : 'h-12 w-12'"
+        />
+
+        <button
+          type="button"
+          @click="toggleSidebar"
+          class="hidden rounded-lg p-2 text-white transition hover:bg-white/10 lg:block"
+        >
+          <svg
+            v-if="isOpen"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            class="h-5 w-5"
+          >
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+
+          <svg
+            v-else
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            class="h-5 w-5"
+          >
+            <path d="M9 18l6-6-6-6" />
+          </svg>
+        </button>
+
+        <button
+          type="button"
+          @click="closeMobileSidebar"
+          class="rounded-lg p-2 text-white transition hover:bg-white/10 lg:hidden"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            class="h-6 w-6"
+          >
+            <path d="M6 6l12 12" />
+            <path d="M18 6L6 18" />
+          </svg>
+        </button>
+
       </div>
-    </div>
-  </div>
 
+      <nav class="flex-1 overflow-y-auto overflow-x-hidden px-3 py-6">
+
+        <p
+          v-if="isOpen"
+          class="mb-4 px-3 text-xs font-bold uppercase tracking-widest text-white/50"
+        >
+          Main Menu
+        </p>
+
+        <div class="space-y-2">
+
+          <RouterLink
+            to="/dashboard"
+            @click="closeMobileSidebar"
+            class="group relative flex w-full items-center rounded-xl px-3 py-3 transition-all duration-200"
+            :class="[
+              isOpen ? 'gap-3' : 'lg:justify-center',
+              isActive('/dashboard')
+                ? 'bg-white text-primary shadow-md'
+                : 'text-white hover:bg-white/10'
+            ]"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              class="h-5 w-5 shrink-0"
+            >
+              <path d="M3 10.5L12 3l9 7.5" />
+              <path d="M5 9.5V21h14V9.5" />
+              <path d="M9 21v-6h6v6" />
+            </svg>
+
+            <span
+              v-if="isOpen"
+              class="whitespace-nowrap font-medium"
+            >
+              Dashboard
+            </span>
+
+            <span
+              v-if="!isOpen"
+              class="pointer-events-none absolute left-16 hidden whitespace-nowrap rounded-lg bg-black px-3 py-2 text-sm text-white opacity-0 shadow-lg transition group-hover:opacity-100 lg:block"
+            >
+              Dashboard
+            </span>
+          </RouterLink>
+
+          <RouterLink
+            to="/courses"
+            @click="closeMobileSidebar"
+            class="group relative flex w-full items-center rounded-xl px-3 py-3 transition-all duration-200"
+            :class="[
+              isOpen ? 'gap-3' : 'lg:justify-center',
+              isActive('/courses')
+                ? 'bg-white text-primary shadow-md'
+                : 'text-white hover:bg-white/10'
+            ]"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              class="h-5 w-5 shrink-0"
+            >
+              <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
+              <path
+                d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2Z"
+              />
+            </svg>
+
+            <span
+              v-if="isOpen"
+              class="whitespace-nowrap font-medium"
+            >
+              Courses
+            </span>
+
+            <span
+              v-if="!isOpen"
+              class="pointer-events-none absolute left-16 hidden whitespace-nowrap rounded-lg bg-black px-3 py-2 text-sm text-white opacity-0 shadow-lg transition group-hover:opacity-100 lg:block"
+            >
+              Courses
+            </span>
+          </RouterLink>
+
+          <RouterLink
+            to="/ my-learning"
+            @click="closeMobileSidebar"
+            class="group relative flex w-full items-center rounded-xl px-3 py-3 transition-all duration-200"
+            :class="[
+              isOpen ? 'gap-3' : 'lg:justify-center',
+              isActive('/ my-learning')
+                ? 'bg-white text-primary shadow-md'
+                : 'text-white hover:bg-white/10'
+            ]"
+          >
+           <svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+  class="h-5 w-5 shrink-0"
+>
+  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+  <path d="M8 7h8" />
+  <path d="M8 11h6" />
+</svg>
+
+            <span
+              v-if="isOpen"
+              class="whitespace-nowrap font-medium"
+            >
+             my-learning
+            </span>
+
+            <span
+              v-if="!isOpen"
+              class="pointer-events-none absolute left-16 hidden whitespace-nowrap rounded-lg bg-black px-3 py-2 text-sm text-white opacity-0 shadow-lg transition group-hover:opacity-100 lg:block"
+            >
+               my-learning
+            </span>
+          </RouterLink>
+
+          <RouterLink
+            to="/settings"
+            @click="closeMobileSidebar"
+            class="group relative flex w-full items-center rounded-xl px-3 py-3 transition-all duration-200"
+            :class="[
+              isOpen ? 'gap-3' : 'lg:justify-center',
+              isActive('/settings')
+                ? 'bg-white text-primary shadow-md'
+                : 'text-white hover:bg-white/10'
+            ]"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              class="h-5 w-5 shrink-0"
+            >
+              <path d="M12 15.5a3.5 3.5 0 100-7 3.5 3.5 0 000 7Z" />
+              <path
+                d="M19.4 15a1.7 1.7 0 00.34 1.88l.06.06-1.8 1.8-.06-.06a1.7 1.7 0 00-1.88-.34 1.7 1.7 0 00-1.03 1.56V20h-2.54v-.1a1.7 1.7 0 00-1.03-1.56 1.7 1.7 0 00-1.88.34l-.06.06-1.8-1.8-.06-.06A1.7 1.7 0 008.1 15a1.7 1.7 0 00-1.56-1.03H6.4v-2.54h.14A1.7 1.7 0 008.1 10.4a1.7 1.7 0 00-.34-1.88L7.7 8.46l1.8-1.8.06.06a1.7 1.7 0 001.88.34 1.7 1.7 0 001.03-1.56V5.4h2.54v.1a1.7 1.7 0 001.03 1.56 1.7 1.7 0 001.88-.34l.06-.06 1.8 1.8-.06.06A1.7 1.7 0 0019.4 10.4a1.7 1.7 0 001.56 1.03h.14v2.54h-.14A1.7 1.7 0 0019.4 15Z"
+              />
+            </svg>
+
+            <span
+              v-if="isOpen"
+              class="whitespace-nowrap font-medium"
+            >
+              Settings
+            </span>
+
+            <span
+              v-if="!isOpen"
+              class="pointer-events-none absolute left-16 hidden whitespace-nowrap rounded-lg bg-black px-3 py-2 text-sm text-white opacity-0 shadow-lg transition group-hover:opacity-100 lg:block"
+            >
+              Settings
+            </span>
+          </RouterLink>
+
+        </div>
+      </nav>
+
+      <div class="shrink-0 border-t border-white/10 p-3">
+
+        <div
+          v-if="isOpen"
+          class="mb-3 rounded-xl bg-white/10 p-3"
+        >
+          <p class="truncate text-sm font-semibold text-white">
+            {{ user?.name || "Guest" }}
+          </p>
+
+          <p class="truncate text-xs text-white/60">
+            {{ user?.email || "john.doe@example.com" }}
+          </p>
+        </div>
+
+        <button
+          type="button"
+          @click="logout"
+          class="group relative flex w-full items-center rounded-xl bg-white/10 px-3 py-3 text-white transition hover:bg-red-500/20 hover:text-red-200"
+          :class="isOpen ? 'gap-3' : 'lg:justify-center'"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            class="h-5 w-5 shrink-0"
+          >
+            <path d="M10 17l5-5-5-5" />
+            <path d="M15 12H3" />
+            <path d="M21 19V5a2 2 0 00-2-2h-6" />
+          </svg>
+
+          <span
+            v-if="isOpen"
+            class="font-medium text-white"
+          >
+            Logout
+          </span>
+
+          <span
+            v-if="!isOpen"
+            class="pointer-events-none absolute left-16 hidden whitespace-nowrap rounded-lg bg-black px-3 py-2 text-sm text-white opacity-0 shadow-lg transition group-hover:opacity-100 lg:block"
+          >
+            Logout
+          </span>
+        </button>
+
+      </div>
+    </aside>
+
+    <main
+      class="min-h-screen w-full transition-[margin,width] duration-300"
+      :class="
+        isOpen
+          ? 'lg:ml-64 lg:w-[calc(100%-16rem)]'
+          : 'lg:ml-20 lg:w-[calc(100%-5rem)]'
+      "
+    >
+
+      <header
+        class="sticky top-0 z-30 flex h-20 items-center border-b bg-white/90 px-4 shadow-sm backdrop-blur-md sm:px-6 lg:px-8"
+      >
+
+        <button
+          type="button"
+          @click="toggleMobileSidebar"
+          class="mr-3 rounded-xl bg-primary p-3 text-white shadow-sm transition hover:opacity-90 lg:hidden"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            class="h-5 w-5"
+          >
+            <path d="M4 6h16" />
+            <path d="M4 12h16" />
+            <path d="M4 18h16" />
+          </svg>
+        </button>
+
+        <h2 class="text-2xl font-bold text-primary sm:text-xl">
+          <span class="text-md text-black">Welcome</span>
+          {{ user?.name || "Guest" }}
+        </h2>
+
+      </header>
+
+      <section class="p-4 sm:p-6 lg:p-8">
+        <slot />
+      </section>
+
+    </main>
+
+  </div>
 </template>

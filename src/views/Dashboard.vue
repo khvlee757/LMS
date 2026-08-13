@@ -9,7 +9,7 @@ const user = savedForm ? JSON.parse(savedForm) : null;
     <Sidebar>
         <main class="p-6">
             <h1 class="text-3xl font-bold">Dashboard</h1>
-            <p class="mt-2 text-lg">Welcome, {{ user?.name || 'Guest' }}.</p>
+            
         </main>
     </Sidebar>
 </template>
