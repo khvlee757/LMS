@@ -16,7 +16,7 @@ const props = defineProps({
 </script>
 
 <template>
-  <Card class="border-0 bg-white shadow-md">
+  <Card class="border border-primary bg-white shadow-md">
     <CardHeader class="pb-4">
       <div class="flex items-center justify-between gap-4">
         <div>

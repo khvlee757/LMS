@@ -18,7 +18,7 @@ function skip() {
 <template>
   <main class="min-h-screen flex items-center justify-center bg-secondary p-6">
     <div class="max-w-2xl w-full">
-      <div class="rounded-xl bg-card p-8 text-center shadow-md">
+      <div class="rounded-xl bg-primary p-8 text-center shadow-md">
         <h1 class="text-4xl font-bold mb-4">Welcome to LMS</h1>
         <p class="text-muted-foreground mb-6">Thanks for creating your account. Before you start, take a moment to set up your interests and pick courses.</p>
 
