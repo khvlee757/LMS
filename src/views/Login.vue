@@ -42,7 +42,7 @@ const handleSubmit = async () => {
   }
 
   alert("Login successful!");
-  router.push("/");
+  router.push("/dashboard");
 };
 </script>
 
@@ -130,6 +130,7 @@ const handleSubmit = async () => {
 
             <div class="pt-2">
               <Button
+              @click="handleSubmit"
                 type="submit"
                 class="w-full bg-primary p-6 text-xl font-bold text-white hover:bg-primary/90"
               >
