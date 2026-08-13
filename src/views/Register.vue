@@ -86,7 +86,9 @@ const handleSubmit = async () => {
 
   alert("Account created successfully!");
 
-  router.push("/login");
+  // mark as first-time user and send to plain welcome/onboarding before choosing courses
+  localStorage.setItem('firstTimeUser', 'true');
+  router.push('/welcome');
 };
 </script>
 
