@@ -11,6 +11,7 @@
   "dependencies": {
     "@lottiefiles/dotlottie-vue": "^0.11.24",
     "@lucide/vue": "^1.31.0",
+    "@unovis/vue": "^1.6.7",
     "@vee-validate/rules": "^4.15.1",
     "@vueuse/core": "^14.4.0",
     "class-variance-authority": "^0.7.1",

@@ -1,74 +1,69 @@
-<script setup>
-import { computed, onMounted, ref } from 'vue';
-import Sidebar from '@/components/Sidebar.vue';
+<script setup lang="ts">
+import { computed, onMounted, ref } from "vue";
+import Sidebar from "@/components/Sidebar.vue";
+import AdminStats from "@/components/admin/AdminStats.vue";
+import AdminChartPanel from "@/components/admin/AdminChartPanel.vue";
+import RecentEnrollmentsCard from "@/components/admin/RecentEnrollmentsCard.vue";
+import CourseTable from "@/components/admin/CourseTable.vue";
+import AddCourseForm from "@/components/admin/AddCourseForm.vue";
 
-const form = ref({
-  title: '',
-  category: '',
-  mentor: '',
-  lessons: 8,
-});
-
-const courses = ref([]);
-const registeredUsers = ref([]);
+const courses = ref<any[]>([]);
+const registeredUsers = ref<any[]>([]);
 
 const defaultCourses = [
   {
-    id: 'uiux',
-    title: 'UI/UX Fundamentals',
-    category: 'Design',
-    mentor: 'Maya Ali',
+    id: "uiux",
+    title: "UI/UX Fundamentals",
+    category: "Design",
+    mentor: "Maya Ali",
     lessons: 12,
     progress: 0,
-    image: new URL('@/assets/book.png', import.meta.url).href,
+    image: new URL("@/assets/book.png", import.meta.url).href,
   },
   {
-    id: 'js',
-    title: 'JavaScript Essentials',
-    category: 'Development',
-    mentor: 'Noah Reed',
+    id: "js",
+    title: "JavaScript Essentials",
+    category: "Development",
+    mentor: "Noah Reed",
     lessons: 18,
     progress: 0,
-    image: new URL('@/assets/book.png', import.meta.url).href,
+    image: new URL("@/assets/book.png", import.meta.url).href,
   },
   {
-    id: 'marketing',
-    title: 'Marketing Strategy',
-    category: 'Business',
-    mentor: 'Sophia Green',
+    id: "marketing",
+    title: "Marketing Strategy",
+    category: "Business",
+    mentor: "Sophia Green",
     lessons: 9,
     progress: 0,
-    image: new URL('@/assets/book.png', import.meta.url).href,
+    image: new URL("@/assets/book.png", import.meta.url).href,
   },
 ];
 
 const totalUsers = computed(() => registeredUsers.value.length);
 const totalCourses = computed(() => courses.value.length);
-const completedUsers = computed(() =>
-  registeredUsers.value.filter((user) => Array.isArray(user.completedCourses) && user.completedCourses.length > 0).length,
+
+const completedUsers = computed(
+  () =>
+    registeredUsers.value.filter(
+      (user) =>
+        Array.isArray(user.completedCourses) && user.completedCourses.length > 0
+    ).length
 );
+
 const completionRate = computed(() => {
   if (!totalUsers.value) return 0;
   return Math.round((completedUsers.value / totalUsers.value) * 100);
 });
 
-const chartData = computed(() => [
-  { label: 'Mon', value: 18 },
-  { label: 'Tue', value: 26 },
-  { label: 'Wed', value: 22 },
-  { label: 'Thu', value: 31 },
-  { label: 'Fri', value: 42 },
-  { label: 'Sat', value: 34 },
-  { label: 'Sun', value: 28 },
-]);
-
 const loadState = () => {
-  const savedCourses = localStorage.getItem('lmsCatalog');
-  const savedUsers = localStorage.getItem('lmsUsers');
+  const savedCourses = localStorage.getItem("lmsCatalog");
+  const savedUsers = localStorage.getItem("lmsUsers");
 
   courses.value = savedCourses ? JSON.parse(savedCourses) : defaultCourses;
+
   if (!savedCourses) {
-    localStorage.setItem('lmsCatalog', JSON.stringify(defaultCourses));
+    localStorage.setItem("lmsCatalog", JSON.stringify(defaultCourses));
   }
 
   registeredUsers.value = savedUsers ? JSON.parse(savedUsers) : [];
@@ -76,158 +71,129 @@ const loadState = () => {
 
 onMounted(() => {
   loadState();
+  // listen for updates made elsewhere in the app (register/enroll)
+  window.addEventListener('lms:usersUpdated', loadState)
 });
+import { onUnmounted } from 'vue'
 
-const addCourse = () => {
-  if (!form.value.title || !form.value.category || !form.value.mentor) {
+onUnmounted(() => {
+  window.removeEventListener('lms:usersUpdated', loadState)
+})
+
+const addCourse = (payload: {
+  title: string;
+  category: string;
+  mentor: string;
+  lessons: number;
+}) => {
+  if (!payload.title || !payload.category || !payload.mentor) {
     return;
   }
 
   const newCourse = {
-    id: `${form.value.title.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
-    title: form.value.title,
-    category: form.value.category,
-    mentor: form.value.mentor,
-    lessons: Number(form.value.lessons) || 8,
+    id: `${payload.title.toLowerCase().replace(/\s+/g, "-")}-${Date.now()}`,
+    title: payload.title,
+    category: payload.category,
+    mentor: payload.mentor,
+    lessons: Number(payload.lessons) || 8,
     progress: 0,
-    image: new URL('@/assets/book.png', import.meta.url).href,
+    image: new URL("@/assets/book.png", import.meta.url).href,
   };
 
   const nextCourses = [newCourse, ...courses.value];
   courses.value = nextCourses;
-  localStorage.setItem('lmsCatalog', JSON.stringify(nextCourses));
-
-  form.value = {
-    title: '',
-    category: '',
-    mentor: '',
-    lessons: 8,
-  };
+  localStorage.setItem("lmsCatalog", JSON.stringify(nextCourses));
 };
+
+const removeCourse = (courseId: string) => {
+  const nextCourses = courses.value.filter((course) => course.id !== courseId);
+  courses.value = nextCourses;
+  localStorage.setItem("lmsCatalog", JSON.stringify(nextCourses));
+};
+
+// chart: compute monthly enrollments from stored users/enrollments
+const totalEnrollments = computed(() =>
+  registeredUsers.value.reduce((total, user) => total + (user.enrolledCourses?.length || 0), 0)
+)
+
+const getLastSixMonths = () => {
+  const res = []
+  const now = new Date()
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    res.push({ label: d.toLocaleString(undefined, { month: "short" }), month: d.getMonth(), year: d.getFullYear() })
+  }
+  return res
+}
+
+const chartData = computed(() => {
+  const months = getLastSixMonths()
+  const counts = new Array(months.length).fill(0)
+
+  const hasTimestamps = registeredUsers.value.some((u: any) => {
+    if (u.registeredAt || u.createdAt || u.registrationDate) return true
+    if (Array.isArray(u.enrolledCourses)) {
+      return u.enrolledCourses.some((c: any) => c.enrolledAt || c.addedAt || c.createdAt)
+    }
+    return false
+  })
+
+  if (hasTimestamps) {
+    registeredUsers.value.forEach((u: any) => {
+      if (Array.isArray(u.enrolledCourses) && u.enrolledCourses.length) {
+        u.enrolledCourses.forEach((c: any) => {
+          const ts = c.enrolledAt || c.addedAt || c.createdAt || u.registeredAt || u.createdAt || u.registrationDate
+          if (!ts) return
+          const d = new Date(ts)
+          months.forEach((m, idx) => {
+            if (d.getMonth() === m.month && d.getFullYear() === m.year) counts[idx]++
+          })
+        })
+      } else {
+        const ts = u.registeredAt || u.createdAt || u.registrationDate
+        if (!ts) return
+        const d = new Date(ts)
+        months.forEach((m, idx) => {
+          if (d.getMonth() === m.month && d.getFullYear() === m.year) counts[idx]++
+        })
+      }
+    })
+  } else {
+    counts[counts.length - 1] = totalEnrollments.value
+  }
+
+  return months.map((m, idx) => ({ month: m.label, desktop: counts[idx] }))
+})
 </script>
 
 <template>
   <Sidebar>
     <main class="space-y-6 p-6">
-      <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+      <div
+        class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"
+      >
         <div>
-          <p class="text-sm uppercase tracking-wide text-muted-foreground">Overview</p>
+          <p class="text-sm uppercase tracking-wide text-muted-foreground">
+            Overview
+          </p>
           <h1 class="text-3xl font-bold text-primary">Admin dashboard</h1>
         </div>
       </div>
 
-      <section class="grid gap-4 md:grid-cols-3">
-        <div class="rounded-2xl border bg-white p-5 shadow-sm">
-          <p class="text-sm text-muted-foreground">Registered users</p>
-          <h2 class="mt-3 text-3xl font-bold text-primary">{{ totalUsers }}</h2>
-        </div>
-
-        <div class="rounded-2xl border bg-white p-5 shadow-sm">
-          <p class="text-sm text-muted-foreground">Courses available</p>
-          <h2 class="mt-3 text-3xl font-bold text-primary">{{ totalCourses }}</h2>
-        </div>
-
-        <div class="rounded-2xl border bg-white p-5 shadow-sm">
-          <p class="text-sm text-muted-foreground">Course completion</p>
-          <h2 class="mt-3 text-3xl font-bold text-primary">{{ completionRate }}%</h2>
-        </div>
-      </section>
+      <AdminStats
+        :total-users="totalUsers"
+        :total-courses="totalCourses"
+        :completion-rate="completionRate"
+      />
 
       <section class="grid gap-6 lg:grid-cols-[2fr_1fr]">
-        <div class="rounded-2xl border bg-white p-5 shadow-sm">
-          <div class="mb-4 flex items-center justify-between">
-            <h3 class="text-xl font-semibold text-primary">Sign-ups</h3>
-            <span class="text-sm text-muted-foreground">This week</span>
-          </div>
-
-          <div class="flex h-52 items-end gap-3">
-            <div
-              v-for="day in chartData"
-              :key="day.label"
-              class="flex flex-1 flex-col items-center justify-end gap-2"
-            >
-              <span class="text-xs text-muted-foreground">{{ day.value }}</span>
-              <div
-                class="w-full rounded-t-xl bg-primary/80"
-                :style="{ height: `${day.value}%` }"
-              ></div>
-              <span class="text-xs text-muted-foreground">{{ day.label }}</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="rounded-2xl border bg-white p-5 shadow-sm">
-          <h3 class="mb-4 text-xl font-semibold text-primary">Completed learners</h3>
-          <div class="space-y-3">
-            <div class="flex items-center justify-between rounded-xl bg-primary/5 px-3 py-2">
-              <span class="text-sm text-muted-foreground">Completed users</span>
-              <span class="font-semibold text-primary">{{ completedUsers }}</span>
-            </div>
-            <div class="flex items-center justify-between rounded-xl bg-primary/5 px-3 py-2">
-              <span class="text-sm text-muted-foreground">In progress</span>
-              <span class="font-semibold text-primary">{{ Math.max(totalUsers - completedUsers, 0) }}</span>
-            </div>
-            <div class="flex items-center justify-between rounded-xl bg-primary/5 px-3 py-2">
-              <span class="text-sm text-muted-foreground">Avg. completion</span>
-              <span class="font-semibold text-primary">{{ completionRate }}%</span>
-            </div>
-          </div>
-        </div>
+        <AdminChartPanel :data="chartData" :config="{ desktop: { label: 'Enrollments', color: 'var(--chart-1)' } }" xKey="month" yKey="desktop" />
+        <RecentEnrollmentsCard :users="registeredUsers" />
       </section>
 
       <section class="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <div class="rounded-2xl border bg-white p-5 shadow-sm">
-          <div class="mb-4 flex items-center justify-between">
-            <h3 class="text-xl font-semibold text-primary">Course catalog</h3>
-            <span class="text-sm text-muted-foreground">{{ courses.length }} items</span>
-          </div>
-
-          <div class="space-y-3">
-            <div
-              v-for="course in courses"
-              :key="course.id || course.title"
-              class="flex items-center justify-between rounded-xl border px-3 py-3"
-            >
-              <div>
-                <p class="font-semibold text-primary">{{ course.title }}</p>
-                <p class="text-sm text-muted-foreground">{{ course.category }} · {{ course.mentor }}</p>
-              </div>
-              <span class="rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
-                {{ course.lessons }} lessons
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div class="rounded-2xl border bg-white p-5 shadow-sm">
-          <h3 class="mb-4 text-xl font-semibold text-primary">Add new course</h3>
-
-          <form class="space-y-4" @submit.prevent="addCourse">
-            <div>
-              <label class="mb-1 block text-sm font-medium text-primary">Course name</label>
-              <input v-model="form.title" type="text" class="w-full rounded-lg border px-3 py-2 outline-none focus:border-primary" placeholder="e.g. Product Design" />
-            </div>
-
-            <div>
-              <label class="mb-1 block text-sm font-medium text-primary">Category</label>
-              <input v-model="form.category" type="text" class="w-full rounded-lg border px-3 py-2 outline-none focus:border-primary" placeholder="e.g. Design" />
-            </div>
-
-            <div>
-              <label class="mb-1 block text-sm font-medium text-primary">Mentor</label>
-              <input v-model="form.mentor" type="text" class="w-full rounded-lg border px-3 py-2 outline-none focus:border-primary" placeholder="e.g. Sarah Lee" />
-            </div>
-
-            <div>
-              <label class="mb-1 block text-sm font-medium text-primary">Lessons</label>
-              <input v-model="form.lessons" type="number" min="1" class="w-full rounded-lg border px-3 py-2 outline-none focus:border-primary" placeholder="8" />
-            </div>
-
-            <button type="submit" class="w-full rounded-lg bg-primary px-4 py-3 font-semibold text-white hover:bg-primary/90">
-              Save course
-            </button>
-          </form>
-        </div>
+        <CourseTable :courses="courses" @remove-course="removeCourse" />
+        <AddCourseForm @add-course="addCourse" />
       </section>
     </main>
   </Sidebar>

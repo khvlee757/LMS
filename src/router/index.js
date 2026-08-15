@@ -3,7 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 const routes = [
   {
     path: '/',
-    redirect: '/dashboard',
+    redirect: '/register',
   },
   {
     path: '/register',
@@ -50,12 +50,20 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   const role = localStorage.getItem('lmsRole');
 
+  // debug logs to trace navigation
+  // eslint-disable-next-line no-console
+  console.log('[router] navigating to', to.path, 'from', from.path, 'role=', role);
+
   if (to.path === '/admin-dashboard' && role !== 'admin') {
+    // eslint-disable-next-line no-console
+    console.log('[router] blocking access to admin-dashboard, redirecting to /admin-login');
     next('/admin-login');
     return;
   }
 
   if (to.path === '/admin-login' && role === 'admin') {
+    // eslint-disable-next-line no-console
+    console.log('[router] already admin, redirecting to /admin-dashboard');
     next('/admin-dashboard');
     return;
   }

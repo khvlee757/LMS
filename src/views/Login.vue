@@ -148,6 +148,11 @@ const handleSubmit = async () => {
               </RouterLink>
             </div>
           </form>
+
+          <div class="mt-3 text-center text-sm text-primary/70">
+            Admin?
+            <button type="button" @click="router.push('/admin-login')" class="ml-1 font-semibold text-primary underline underline-offset-4">Admin login</button>
+          </div>
         </CardContent>
       </Card>
     </section>

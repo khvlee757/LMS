@@ -6,6 +6,10 @@
 
 @custom-variant dark (&:is(.dark *));
 
+ body {
+    @apply bg-background text-foreground;
+    font-family:  'Roboto', sans-serif;
+  }
 :root {
   --primary: #895cdd;
   --primary-foreground: #ffffff;
@@ -114,8 +118,5 @@
     font-family: 'Roboto', sans-serif;
   }
 
-  body {
-    @apply bg-background text-foreground;
-    font-family: var(--font-sans);
-  }
+ 
 }
