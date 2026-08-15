@@ -88,6 +88,27 @@ const handleSubmit = async () => {
 
   // mark as first-time user and send to plain welcome/onboarding before choosing courses
   localStorage.setItem('firstTimeUser', 'true');
+
+  // add user to lmsUsers for admin visibility and enrollments tracking
+  try {
+    const saved = localStorage.getItem('lmsUsers')
+    const users = saved ? JSON.parse(saved) : []
+    users.push({
+      id: `${Date.now()}`,
+      name: form.name,
+      email: form.email,
+      phone: form.phone,
+      password: form.password,
+      registeredAt: new Date().toISOString(),
+      enrolledCourses: [],
+      completedCourses: [],
+    })
+    localStorage.setItem('lmsUsers', JSON.stringify(users))
+    // notify other parts of the app (admin dashboard) that users updated
+    try { window.dispatchEvent(new CustomEvent('lms:usersUpdated')) } catch (e) {}
+  } catch (e) {
+    // ignore
+  }
   router.push('/welcome');
 };
 </script>
@@ -265,6 +286,11 @@ const handleSubmit = async () => {
               </RouterLink>
             </div>
           </form>
+
+          <div class="mt-3 text-center text-sm text-primary/70">
+            Admin?
+            <button type="button" @click="router.push('/admin-login')" class="ml-1 font-semibold text-primary underline underline-offset-4">Admin login</button>
+          </div>
         </CardContent>
       </Card>
     </section>
