@@ -4,6 +4,7 @@ import { RouterLink, useRoute } from "vue-router";
 import { ArrowLeft, Check, CirclePlay, LoaderCircle } from "lucide-vue-next";
 import { getAuthenticatedProfile } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
+import CourseAssessments from "@/components/courses/CourseAssessments.vue";
 
 const route = useRoute();
 const course = ref(null);
@@ -141,6 +142,8 @@ async function toggleComplete(lesson) {
         </div>
       </article>
     </div>
+    <p v-if="!enrolled" class="border border-dashed border-border bg-white px-5 py-4 text-sm text-muted-foreground">Enroll in this course to access its quizzes and assignments.</p>
+    <CourseAssessments v-else :course-id="course.id" :enrolled="enrolled" />
   </section>
   <section v-else class="border border-border bg-white px-6 py-12 text-center">
     <h1 class="text-xl font-bold">Course unavailable</h1>

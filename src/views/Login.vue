@@ -101,7 +101,12 @@ const handleSubmit = async () => {
       throw new Error(accessMessage);
     }
 
-    successMessage.value = "Signed in. Opening your learning space...";
+    const { error: activityError } = await supabase
+      .from("login_activity")
+      .insert({ user_id: user.id });
+    successMessage.value = activityError && activityError.code !== "23505"
+      ? "Signed in. Daily activity tracking is not available yet."
+      : "Signed in. Opening your learning space...";
     const redirect = typeof router.currentRoute.value.query.redirect === "string"
       ? router.currentRoute.value.query.redirect
       : loginType.value === "super_admin"

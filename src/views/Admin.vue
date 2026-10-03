@@ -8,6 +8,7 @@ const currentProfile = ref(null);
 const courses = ref([]);
 const people = ref([]);
 const applications = ref([]);
+const loginActivity = ref([]);
 const reviewingUser = ref("");
 const loading = ref(true);
 const saving = ref(false);
@@ -29,22 +30,43 @@ onMounted(async () => {
 
 async function loadData() {
   if (!supabase) return;
-  const [courseResult, peopleResult, applicationResult] = await Promise.all([
+  const [courseResult, peopleResult, applicationResult, activityResult] = await Promise.all([
     supabase.from("courses").select("id, title, category, level, published, created_at").order("created_at", { ascending: false }),
     supabase.from("profiles").select("user_id, email, full_name, role, created_at").order("created_at", { ascending: false }),
     supabase.from("instructor_applications").select("user_id, organization, professional_title, expertise, experience_years, qualification, verification_url, teaching_statement, status, review_notes, created_at, reviewed_at").order("created_at", { ascending: false }),
+    supabase.from("login_activity").select("user_id, activity_date").order("activity_date", { ascending: false }).limit(10000),
   ]);
-  if (courseResult.error || peopleResult.error || applicationResult.error) {
-    errorMessage.value = courseResult.error?.message || peopleResult.error?.message || applicationResult.error?.message || "Unable to load admin data.";
+  if (courseResult.error || peopleResult.error || applicationResult.error || activityResult.error) {
+    errorMessage.value = courseResult.error?.message || peopleResult.error?.message || applicationResult.error?.message || activityResult.error?.message || "Unable to load admin data.";
   } else {
     courses.value = courseResult.data ?? [];
     people.value = peopleResult.data ?? [];
+    loginActivity.value = activityResult.data ?? [];
     applications.value = (applicationResult.data ?? []).map((application) => ({
       ...application,
       profile: people.value.find((person) => person.user_id === application.user_id),
     }));
   }
   loading.value = false;
+}
+
+function loginSummary(userId) {
+  const dates = new Set(loginActivity.value
+    .filter((activity) => activity.user_id === userId)
+    .map((activity) => activity.activity_date));
+  const lastLogin = [...dates].sort((left, right) => right.localeCompare(left))[0] ?? null;
+  const today = new Date().toISOString().slice(0, 10);
+  const yesterday = new Date(`${today}T00:00:00.000Z`);
+  yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+  let date = dates.has(today) ? today : yesterday.toISOString().slice(0, 10);
+  let streak = 0;
+  while (dates.has(date)) {
+    streak += 1;
+    const previous = new Date(`${date}T00:00:00.000Z`);
+    previous.setUTCDate(previous.getUTCDate() - 1);
+    date = previous.toISOString().slice(0, 10);
+  }
+  return { lastLogin, streak };
 }
 
 async function createCourse() {
@@ -172,15 +194,17 @@ async function reviewApplication(application, status) {
       </table>
     </div>
     <div v-else-if="activeTab === 'people'" class="overflow-x-auto border border-border bg-white">
-      <table class="w-full min-w-[600px] text-left text-sm">
-        <thead class="border-b border-border bg-secondary/70 text-xs uppercase text-muted-foreground"><tr><th class="px-4 py-3 font-bold">Learner</th><th class="px-4 py-3 font-bold">Role</th><th class="px-4 py-3 font-bold">Access</th></tr></thead>
+      <table class="w-full min-w-[820px] text-left text-sm">
+        <thead class="border-b border-border bg-secondary/70 text-xs uppercase text-muted-foreground"><tr><th class="px-4 py-3 font-bold">Account</th><th class="px-4 py-3 font-bold">Role</th><th class="px-4 py-3 font-bold">Last login</th><th class="px-4 py-3 font-bold">Streak</th><th class="px-4 py-3 font-bold">Access</th></tr></thead>
         <tbody>
           <tr v-for="person in people" :key="person.user_id" class="border-b border-border last:border-0">
-            <td class="px-4 py-4 font-semibold">{{ person.full_name || 'New learner' }}</td>
+            <td class="px-4 py-4"><span class="block font-semibold">{{ person.full_name || 'New learner' }}</span><span class="text-xs text-muted-foreground">{{ person.email }}</span></td>
             <td class="px-4 py-4"><span class="capitalize">{{ person.role.replace('_', ' ') }}</span><span v-if="person.role === 'super_admin'" class="ml-2 text-xs text-primary">Owner</span></td>
+            <td class="px-4 py-4 text-muted-foreground">{{ loginSummary(person.user_id).lastLogin || 'No logins yet' }}</td>
+            <td class="px-4 py-4 font-semibold">{{ loginSummary(person.user_id).streak }} {{ loginSummary(person.user_id).streak === 1 ? 'day' : 'days' }}</td>
             <td class="px-4 py-4 text-xs text-muted-foreground">{{ person.role === 'super_admin' ? 'Only owner' : person.role === 'instructor' ? 'Approved application' : 'Learner access' }}</td>
           </tr>
-          <tr v-if="!people.length"><td colspan="3" class="px-4 py-12 text-center text-muted-foreground">No profiles found.</td></tr>
+          <tr v-if="!people.length"><td colspan="5" class="px-4 py-12 text-center text-muted-foreground">No profiles found.</td></tr>
         </tbody>
       </table>
     </div>

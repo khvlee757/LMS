@@ -31,7 +31,7 @@ defineProps({
       </div>
     </section>
     <section class="flex h-screen min-h-0 justify-center overflow-y-auto px-5 py-8 sm:px-8 lg:px-10 xl:px-14" :class="formAtTop ? 'items-start' : 'items-center'">
-      <div class="my-auto w-full max-w-2xl py-2">
+      <div class="my-auto w-full max-w-2xl py-2 reveal-on-enter" style="--reveal-delay: 80ms">
         <slot />
       </div>
     </section>

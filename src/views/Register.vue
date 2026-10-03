@@ -182,7 +182,7 @@ const handleSubmit = async () => {
     side-headline="Make learning yours."
     side-description="Join as a learner or apply to teach. One account opens the door to new skills and new ways to share what you know."
   >
-      <section class="reveal-on-enter" style="--reveal-delay: 80ms">
+      <section>
         <header class="mb-7">
           <p class="mb-3 text-xs font-bold uppercase text-primary lg:hidden">NORTHSTAR LEARNING</p>
           <p class="mb-2 text-sm font-bold text-primary">CREATE YOUR ACCOUNT</p>

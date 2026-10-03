@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from "vue";
 import { RouterLink } from "vue-router";
-import { ArrowRight, BookOpen, CheckCircle2, GraduationCap, Sparkles } from "lucide-vue-next";
+import { ArrowRight, BookOpen, CheckCircle2, Flame, GraduationCap, Sparkles } from "lucide-vue-next";
 import { getAuthenticatedProfile } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import StatCard from "@/components/dashboard/StatCard.vue";
@@ -9,10 +9,45 @@ import StatCard from "@/components/dashboard/StatCard.vue";
 const profile = ref(null);
 const loading = ref(true);
 const errorMessage = ref("");
-const stats = ref({ available: 0, enrolled: 0, completed: 0 });
+const stats = ref({ available: 0, enrolled: 0, completed: 0, streak: 0 });
+const activityDates = ref([]);
+const recentDays = computed(() => {
+  const dates = new Set(activityDates.value);
+  const today = new Date().toISOString().slice(0, 10);
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(`${today}T00:00:00.000Z`);
+    date.setUTCDate(date.getUTCDate() - (6 - index));
+    const value = date.toISOString().slice(0, 10);
+    return {
+      value,
+      label: date.toLocaleDateString(undefined, { weekday: "short", timeZone: "UTC" }),
+      active: dates.has(value),
+    };
+  });
+});
 const greetingName = computed(
   () => profile.value?.full_name?.split(/\s+/)[0] || "there"
 );
+
+function previousDate(value) {
+  const date = new Date(`${value}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() - 1);
+  return date.toISOString().slice(0, 10);
+}
+
+function calculateStreak(dates) {
+  const activeDates = new Set(dates);
+  const today = new Date().toISOString().slice(0, 10);
+  let cursor = activeDates.has(today) ? today : previousDate(today);
+  if (!activeDates.has(cursor)) return 0;
+
+  let streak = 0;
+  while (activeDates.has(cursor)) {
+    streak += 1;
+    cursor = previousDate(cursor);
+  }
+  return streak;
+}
 
 onMounted(async () => {
   const { user, profile: currentProfile } = await getAuthenticatedProfile();
@@ -23,17 +58,20 @@ onMounted(async () => {
     return;
   }
 
-  const [coursesResult, enrollmentResult, completedResult] = await Promise.all([
+  const [coursesResult, enrollmentResult, completedResult, activityResult] = await Promise.all([
     supabase.from("courses").select("id", { count: "exact", head: true }).eq("published", true),
     supabase.from("enrollments").select("course_id", { count: "exact", head: true }).eq("user_id", user.id),
     supabase.from("lesson_progress").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("completed", true),
+    supabase.from("login_activity").select("activity_date").eq("user_id", user.id).order("activity_date", { ascending: false }).limit(400),
   ]);
-  const failure = coursesResult.error || enrollmentResult.error || completedResult.error;
+  const failure = coursesResult.error || enrollmentResult.error || completedResult.error || activityResult.error;
   if (failure) errorMessage.value = failure.message;
+  activityDates.value = (activityResult.data ?? []).map((row) => row.activity_date);
   stats.value = {
     available: coursesResult.count ?? 0,
     enrolled: enrollmentResult.count ?? 0,
     completed: completedResult.count ?? 0,
+    streak: calculateStreak(activityDates.value),
   };
   loading.value = false;
 });
@@ -54,7 +92,7 @@ onMounted(async () => {
 
     <p v-if="errorMessage" role="alert" class="rounded-md border border-accent bg-white px-4 py-3 text-sm text-accent-foreground">{{ errorMessage }}</p>
 
-    <div class="grid gap-4 sm:grid-cols-3">
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <StatCard label="Courses to explore" :value="loading ? '—' : stats.available" :icon="BookOpen">
         <RouterLink to="/courses" class="inline-flex items-center gap-1 font-bold text-primary hover:underline">Browse catalog <ArrowRight :size="13" /></RouterLink>
       </StatCard>
@@ -64,7 +102,25 @@ onMounted(async () => {
       <StatCard label="Lessons completed" :value="loading ? '—' : stats.completed" :icon="CheckCircle2">
         Keep your momentum going
       </StatCard>
+      <StatCard label="Login streak" :value="loading ? '—' : stats.streak" :icon="Flame">
+        {{ stats.streak === 1 ? 'day in a row' : 'days in a row' }}
+      </StatCard>
     </div>
+
+    <section class="border border-border bg-white p-5" aria-label="Daily login activity for the past week">
+      <div class="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h2 class="text-base font-extrabold">Daily activity</h2>
+          <p class="mt-1 text-sm text-muted-foreground">Sign in each day to keep your streak alive.</p>
+        </div>
+        <div class="flex gap-2 sm:gap-3">
+          <div v-for="day in recentDays" :key="day.value" class="grid justify-items-center gap-2" :aria-label="`${day.label}: ${day.active ? 'signed in' : 'no sign-in'}`">
+            <span class="text-xs font-medium text-muted-foreground">{{ day.label }}</span>
+            <span class="size-4 rounded-full" :class="day.active ? 'bg-primary' : 'bg-secondary'" />
+          </div>
+        </div>
+      </div>
+    </section>
 
     <section class="grid gap-6 lg:grid-cols-[1.4fr_0.8fr]">
       <div class="border border-border bg-white p-6 sm:p-8">

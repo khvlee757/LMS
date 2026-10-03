@@ -3,6 +3,7 @@ import { onMounted, reactive, ref } from "vue";
 import { LoaderCircle, Plus, Save, Trash2 } from "lucide-vue-next";
 import { getAuthenticatedProfile } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
+import InstructorAssessments from "@/components/courses/InstructorAssessments.vue";
 
 const profile = ref(null);
 const courses = ref([]);
@@ -260,6 +261,7 @@ async function deleteLesson(lesson) {
         </li>
         <li v-if="!lessons.length" class="py-5 text-sm text-muted-foreground">No lessons in this course yet.</li>
       </ol>
+      <InstructorAssessments :key="selectedCourse.id" :course-id="selectedCourse.id" />
     </section>
   </section>
 </template>
