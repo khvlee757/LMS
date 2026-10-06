@@ -2,6 +2,7 @@
 import { onMounted, reactive, ref } from "vue";
 import { CheckCircle2, ClipboardList, LoaderCircle, Send } from "lucide-vue-next";
 import { supabase } from "@/lib/supabase";
+import PrivateFileField from "@/components/courses/PrivateFileField.vue";
 
 const props = defineProps({
   courseId: { type: String, required: true },
@@ -30,7 +31,7 @@ async function loadAssessments() {
   }
   const [quizResult, assignmentResult] = await Promise.all([
     supabase.from("quizzes").select("id, title, instructions, time_limit_minutes").eq("course_id", props.courseId).eq("published", true).order("created_at"),
-    supabase.from("assignments").select("id, title, instructions, due_at, points").eq("course_id", props.courseId).eq("published", true).order("created_at"),
+    supabase.from("assignments").select("id, title, instructions, due_at, points, resource_path").eq("course_id", props.courseId).eq("published", true).order("created_at"),
   ]);
   const failure = quizResult.error || assignmentResult.error;
   if (failure) errorMessage.value = failure.message;
@@ -39,12 +40,12 @@ async function loadAssessments() {
 
   if (props.enrolled && assignments.value.length) {
     for (const assignment of assignments.value) {
-      submissions.value[assignment.id] = { response: "", attachment_url: "" };
+      submissions.value[assignment.id] = { response: "", attachment_url: "", attachment_path: "" };
     }
     const { data: userData } = await supabase.auth.getUser();
     const ids = assignments.value.map((assignment) => assignment.id);
     const [submissionResult, reviewResult] = await Promise.all([
-      supabase.from("assignment_submissions").select("assignment_id, response, attachment_url, submitted_at").eq("student_id", userData.user.id).in("assignment_id", ids),
+      supabase.from("assignment_submissions").select("assignment_id, response, attachment_url, attachment_path, submitted_at").eq("student_id", userData.user.id).in("assignment_id", ids),
       supabase.from("assignment_reviews").select("assignment_id, grade, feedback, reviewed_at").eq("student_id", userData.user.id).in("assignment_id", ids),
     ]);
     if (submissionResult.error || reviewResult.error) {
@@ -54,6 +55,7 @@ async function loadAssessments() {
       submissions.value[submission.assignment_id] = {
         response: submission.response,
         attachment_url: submission.attachment_url ?? "",
+        attachment_path: submission.attachment_path ?? "",
         submitted_at: submission.submitted_at,
       };
     }
@@ -105,7 +107,7 @@ async function submitQuiz() {
 async function submitAssignment(assignment) {
   if (!supabase || saving.value || !props.enrolled) return;
   const form = submissions.value[assignment.id] ?? { response: "", attachment_url: "" };
-  if (!form.response.trim() && !form.attachment_url.trim()) {
+  if (!form.response.trim() && !form.attachment_url.trim() && !form.attachment_path.trim()) {
     errorMessage.value = "Add a written response or a link before submitting.";
     return;
   }
@@ -122,6 +124,7 @@ async function submitAssignment(assignment) {
     student_id: userData.user.id,
     response: form.response.trim(),
     attachment_url: form.attachment_url.trim() || null,
+    attachment_path: form.attachment_path || null,
     submitted_at: new Date().toISOString(),
   };
   const { error } = await supabase.from("assignment_submissions")
@@ -180,10 +183,12 @@ async function submitAssignment(assignment) {
         <article v-for="assignment in assignments" :key="assignment.id" class="space-y-3 border border-border bg-white p-4">
           <div><div class="flex items-start justify-between gap-3"><h4 class="font-bold">{{ assignment.title }}</h4><span class="shrink-0 text-xs font-semibold text-muted-foreground">{{ assignment.points }} pts</span></div><p v-if="assignment.instructions" class="mt-1 whitespace-pre-line text-sm leading-6 text-muted-foreground">{{ assignment.instructions }}</p><p v-if="assignment.due_at" class="mt-2 text-xs text-muted-foreground">Due {{ new Date(assignment.due_at).toLocaleString() }}</p></div>
           <template v-if="enrolled">
+            <PrivateFileField v-if="assignment.resource_path" :model-value="assignment.resource_path" :course-id="courseId" :assignment-id="assignment.id" kind="assignment-resource" label="Assignment materials" read-only />
             <p v-if="reviews[assignment.id]" class="border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900"><strong>Grade: {{ reviews[assignment.id].grade }} / {{ assignment.points }}</strong><span v-if="reviews[assignment.id].feedback" class="mt-1 block">{{ reviews[assignment.id].feedback }}</span></p>
             <template v-else>
               <textarea v-model="submissions[assignment.id].response" rows="3" class="w-full border border-border px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" placeholder="Write your response" aria-label="Assignment response" :disabled="saving" />
               <input v-model="submissions[assignment.id].attachment_url" type="url" class="h-10 w-full border border-border px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" placeholder="Link to your work (optional)" aria-label="Assignment link" :disabled="saving" />
+              <PrivateFileField v-model="submissions[assignment.id].attachment_path" :course-id="courseId" :assignment-id="assignment.id" kind="assignment" label="Your assignment file" />
               <button type="button" :disabled="saving" class="inline-flex min-h-10 items-center gap-2 bg-primary px-3 text-sm font-bold text-white hover:bg-primary/90 disabled:opacity-60" @click="submitAssignment(assignment)"><LoaderCircle v-if="saving" :size="15" class="animate-spin" /><Send v-else :size="15" />{{ submissions[assignment.id]?.submitted_at ? 'Update submission' : 'Submit assignment' }}</button>
               <p v-if="submissions[assignment.id]?.submitted_at" class="text-xs text-muted-foreground">Submitted {{ new Date(submissions[assignment.id].submitted_at).toLocaleString() }}</p>
             </template>

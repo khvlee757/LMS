@@ -5,6 +5,7 @@ import { ArrowLeft, Check, CirclePlay, LoaderCircle } from "lucide-vue-next";
 import { getAuthenticatedProfile } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import CourseAssessments from "@/components/courses/CourseAssessments.vue";
+import PrivateFileField from "@/components/courses/PrivateFileField.vue";
 
 const route = useRoute();
 const course = ref(null);
@@ -20,6 +21,12 @@ const completionPercent = computed(() => lessons.value.length
   ? Math.round((completedIds.value.size / lessons.value.length) * 100)
   : 0
 );
+const coursePrice = computed(() => {
+  if (!course.value || course.value.is_free) return "Free";
+  const currency = course.value.currency || "NGN";
+  const digits = new Intl.NumberFormat(undefined, { style: "currency", currency }).resolvedOptions().maximumFractionDigits;
+  return new Intl.NumberFormat(undefined, { style: "currency", currency }).format(course.value.price_minor / (10 ** digits));
+});
 
 onMounted(loadCourse);
 
@@ -31,8 +38,8 @@ async function loadCourse() {
     return;
   }
   const [courseResult, lessonsResult, enrollmentResult, progressResult] = await Promise.all([
-    supabase.from("courses").select("id, title, description, category, level, thumbnail_url, instructor_id").eq("id", route.params.id).single(),
-    supabase.from("lessons").select("id, title, content_body, content_url, position, duration_minutes").eq("course_id", route.params.id).order("position"),
+    supabase.from("courses").select("id, title, description, category, level, thumbnail_url, instructor_id, is_free, price_minor, currency").eq("id", route.params.id).single(),
+    supabase.from("lessons").select("id, title, content_body, content_url, content_path, position, duration_minutes").eq("course_id", route.params.id).order("position"),
     supabase.from("enrollments").select("course_id").eq("course_id", route.params.id).eq("user_id", user.id).maybeSingle(),
     supabase.from("lesson_progress").select("lesson_id").eq("course_id", route.params.id).eq("user_id", user.id).eq("completed", true),
   ]);
@@ -52,6 +59,18 @@ async function enroll() {
   if (userError || !userData.user) {
     errorMessage.value = userError?.message || "Please sign in again.";
   } else {
+    if (!course.value.is_free) {
+      const { data, error } = await supabase.functions.invoke("paystack-checkout", {
+        body: { productType: "course", productId: course.value.id },
+      });
+      if (error) errorMessage.value = error.message;
+      else if (data?.authorizationUrl) {
+        window.location.assign(data.authorizationUrl);
+        return;
+      } else errorMessage.value = data?.error || "Paystack checkout could not be started.";
+      busy.value = false;
+      return;
+    }
     const { error } = await supabase.from("enrollments").insert({ user_id: userData.user.id, course_id: course.value.id });
     if (error && error.code !== "23505") errorMessage.value = error.message;
     else {
@@ -59,7 +78,7 @@ async function enroll() {
       notice.value = "You are enrolled. Your lessons are ready.";
       const { data: courseLessons, error: lessonError } = await supabase
         .from("lessons")
-        .select("id, title, content_body, content_url, position, duration_minutes")
+        .select("id, title, content_body, content_url, content_path, position, duration_minutes")
         .eq("course_id", course.value.id)
         .order("position");
       if (lessonError) errorMessage.value = lessonError.message;
@@ -103,10 +122,10 @@ async function toggleComplete(lesson) {
     <header class="overflow-hidden border border-border bg-white">
       <img v-if="course.thumbnail_url" :src="course.thumbnail_url" :alt="`${course.title} course`" class="h-56 w-full object-cover sm:h-72" />
       <div class="p-6 sm:p-8">
-        <div class="flex flex-wrap items-center gap-2 text-xs font-bold text-primary"><span>{{ course.category || 'Course' }}</span><span v-if="course.level" class="rounded-full bg-secondary px-2.5 py-1 capitalize text-foreground">{{ course.level }}</span></div>
+        <div class="flex flex-wrap items-center gap-2 text-xs font-bold text-primary"><span>{{ course.category || 'Course' }}</span><span v-if="course.level" class="rounded-full bg-secondary px-2.5 py-1 capitalize text-foreground">{{ course.level }}</span><span class="rounded-full bg-accent px-2.5 py-1 text-accent-foreground">{{ coursePrice }}</span></div>
         <h1 class="mt-3 text-3xl font-extrabold sm:text-4xl">{{ course.title }}</h1>
         <p class="mt-3 max-w-3xl text-sm leading-7 text-muted-foreground">{{ course.description || 'Course details coming soon.' }}</p>
-        <button v-if="!enrolled" type="button" :disabled="busy" class="mt-6 inline-flex min-h-11 items-center gap-2 bg-primary px-5 text-sm font-bold text-white hover:bg-primary/90 disabled:opacity-60" @click="enroll"><LoaderCircle v-if="busy" :size="16" class="animate-spin" />Enroll in this course</button>
+        <button v-if="!enrolled" type="button" :disabled="busy" class="mt-6 inline-flex min-h-11 items-center gap-2 bg-primary px-5 text-sm font-bold text-white hover:bg-primary/90 disabled:opacity-60" @click="enroll"><LoaderCircle v-if="busy" :size="16" class="animate-spin" />{{ course.is_free ? 'Enroll free' : 'Continue to secure payment' }}</button>
         <div v-else class="mt-6 max-w-sm">
           <div class="flex items-center justify-between text-xs font-semibold"><span>Course progress</span><span>{{ completionPercent }}%</span></div>
           <div class="mt-2 h-2 overflow-hidden bg-secondary" role="progressbar" :aria-valuenow="completionPercent" aria-valuemin="0" aria-valuemax="100" :aria-label="`Course progress ${completionPercent}%`"><div class="h-full bg-primary transition-[width]" :style="{ width: `${completionPercent}%` }" /></div>
@@ -137,6 +156,7 @@ async function toggleComplete(lesson) {
         <div v-if="expandedLesson === lesson.id" class="ml-12 mt-4 space-y-4">
           <p v-if="lesson.content_body" class="whitespace-pre-line text-sm leading-7 text-foreground/85">{{ lesson.content_body }}</p>
           <a v-if="lesson.content_url" :href="lesson.content_url" target="_blank" rel="noopener noreferrer" class="inline-flex text-sm font-bold text-primary underline underline-offset-4">Open lesson resource</a>
+          <PrivateFileField v-if="enrolled && lesson.content_path" :model-value="lesson.content_path" :course-id="course.id" kind="material" label="Course material" read-only />
           <button v-if="enrolled" type="button" class="inline-flex min-h-9 items-center gap-2 border border-primary px-3 text-xs font-bold text-primary hover:bg-secondary disabled:opacity-60" :disabled="busy" @click="toggleComplete(lesson)"><Check :size="14" />{{ completedIds.has(lesson.id) ? 'Mark incomplete' : 'Mark complete' }}</button>
           <p v-else class="text-xs text-muted-foreground">Enroll to track lesson completion.</p>
         </div>

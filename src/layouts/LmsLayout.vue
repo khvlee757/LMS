@@ -14,6 +14,7 @@ import {
 } from "lucide-vue-next";
 import { getAuthenticatedProfile } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
+import northstarMark from "@/assets/northstar-mark.png";
 
 const route = useRoute();
 const router = useRouter();
@@ -24,6 +25,7 @@ const signingOut = ref(false);
 const navigation = computed(() => [
   { label: "Overview", to: "/dashboard", icon: LayoutDashboard },
   { label: "Course catalog", to: "/courses", icon: BookOpen },
+  { label: "Books", to: "/books", icon: BookOpen },
   { label: "My learning", to: "/learning", icon: GraduationCap },
   ...(["instructor", "super_admin"].includes(profile.value?.role)
     ? [{ label: "Instructor studio", to: "/instructor", icon: SquarePen }]
@@ -36,6 +38,7 @@ const pageTitle = computed(() => {
   const titles = {
     dashboard: "Overview",
     courses: "Course catalog",
+    books: "Books",
     learning: "My learning",
     instructor: "Instructor studio",
     admin: "Administration",
@@ -73,8 +76,8 @@ async function signOut() {
   <div class="min-h-screen bg-secondary text-foreground lg:flex">
     <header class="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-white px-4 lg:hidden">
       <RouterLink to="/dashboard" class="flex items-center gap-2 font-extrabold text-primary">
-        <span class="grid size-9 place-items-center rounded-lg bg-primary text-white"><BookOpen :size="19" /></span>
-        <span>Northstar</span>
+        <img :src="northstarMark" alt="" class="size-9" />
+        <span>Northstar Learning</span>
       </RouterLink>
       <button
         type="button"
@@ -89,13 +92,13 @@ async function signOut() {
     </header>
 
     <aside
-      class="fixed inset-y-16 left-0 z-20 w-72 border-r border-border bg-white px-4 py-5 transition-transform lg:inset-y-0 lg:w-64 lg:translate-x-0"
+      class="fixed inset-y-16 left-0 z-20 w-72 border-r border-border bg-primary px-4 py-5 transition-transform lg:inset-y-0 lg:w-64 lg:translate-x-0"
       :class="menuOpen ? 'translate-x-0' : '-translate-x-full'"
     >
       <RouterLink to="/dashboard" class="hidden items-center gap-3 px-3 pb-9 pt-3 lg:flex">
-        <span class="grid size-10 place-items-center rounded-lg bg-primary text-white"><BookOpen :size="20" /></span>
+        <img :src="northstarMark" alt="" class="size-10" />
         <span>
-          <span class="block font-extrabold text-foreground">Northstar</span>
+          <span class="block font-extrabold text-foreground">Northstar Learning</span>
           <span class="block text-xs text-muted-foreground">Learning platform</span>
         </span>
       </RouterLink>
@@ -107,7 +110,7 @@ async function signOut() {
           :key="item.to"
           :to="item.to"
           class="flex min-h-11 items-center gap-3 rounded-md px-3 text-sm font-semibold transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          :class="route.path === item.to ? 'bg-primary text-white' : 'text-foreground/75 hover:bg-secondary hover:text-primary'"
+          :class="route.path === item.to ? 'bg-secondary text-primary' : 'text-foreground/75 hover:bg-primary hover:text-secondary'"
           @click="menuOpen = false"
         >
           <component :is="item.icon" :size="18" aria-hidden="true" />

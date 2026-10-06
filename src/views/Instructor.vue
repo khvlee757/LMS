@@ -4,6 +4,8 @@ import { LoaderCircle, Plus, Save, Trash2 } from "lucide-vue-next";
 import { getAuthenticatedProfile } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import InstructorAssessments from "@/components/courses/InstructorAssessments.vue";
+import InstructorBooks from "@/components/courses/InstructorBooks.vue";
+import PrivateFileField from "@/components/courses/PrivateFileField.vue";
 
 const profile = ref(null);
 const courses = ref([]);
@@ -13,7 +15,7 @@ const loading = ref(true);
 const saving = ref(false);
 const errorMessage = ref("");
 const notice = ref("");
-const courseDraft = reactive({ title: "", description: "", category: "", level: "beginner", thumbnail_url: "" });
+const courseDraft = reactive({ title: "", description: "", category: "", level: "beginner", thumbnail_url: "", is_free: true, price: "" });
 const lessonDraft = reactive({ title: "", content_body: "", content_url: "", duration_minutes: "" });
 
 onMounted(async () => {
@@ -29,7 +31,7 @@ onMounted(async () => {
 
 async function loadCourses(userId, isAdmin = false) {
   if (!supabase) return;
-  let query = supabase.from("courses").select("id, title, description, category, level, thumbnail_url, published, created_at").order("created_at", { ascending: false });
+  let query = supabase.from("courses").select("id, title, description, category, level, thumbnail_url, published, is_free, price_minor, currency, created_at").order("created_at", { ascending: false });
   if (!isAdmin) query = query.eq("instructor_id", userId);
   const { data, error } = await query;
   if (error) errorMessage.value = error.message;
@@ -49,12 +51,15 @@ async function createCourse() {
     category: courseDraft.category.trim() || "General",
     level: courseDraft.level,
     thumbnail_url: courseDraft.thumbnail_url.trim() || null,
+    is_free: courseDraft.is_free,
+    price_minor: courseDraft.is_free ? 0 : Math.round(Number(courseDraft.price) * 100),
+    currency: "NGN",
     published: false,
-  }).select("id, title, description, category, level, thumbnail_url, published, created_at").single();
+  }).select("id, title, description, category, level, thumbnail_url, published, is_free, price_minor, currency, created_at").single();
   if (error) errorMessage.value = error.message;
   else {
     courses.value = [data, ...courses.value];
-    Object.assign(courseDraft, { title: "", description: "", category: "", level: "beginner", thumbnail_url: "" });
+    Object.assign(courseDraft, { title: "", description: "", category: "", level: "beginner", thumbnail_url: "", is_free: true, price: "" });
     notice.value = "Course created as a draft.";
     await selectCourse(data);
   }
@@ -62,10 +67,13 @@ async function createCourse() {
 }
 
 async function selectCourse(course) {
-  selectedCourse.value = course;
+  selectedCourse.value = {
+    ...course,
+    price: course.is_free ? "" : String((course.price_minor ?? 0) / 100),
+  };
   lessons.value = [];
   const { data, error } = await supabase.from("lessons")
-    .select("id, title, content_body, content_url, position, duration_minutes")
+    .select("id, title, content_body, content_url, content_path, position, duration_minutes")
     .eq("course_id", course.id)
     .order("position");
   if (error) errorMessage.value = error.message;
@@ -81,6 +89,9 @@ async function saveCourse() {
     category: selectedCourse.value.category.trim() || "General",
     level: selectedCourse.value.level,
     thumbnail_url: selectedCourse.value.thumbnail_url?.trim() || null,
+    is_free: selectedCourse.value.is_free,
+    price_minor: selectedCourse.value.is_free ? 0 : Math.round(Number(selectedCourse.value.price) * 100),
+    currency: selectedCourse.value.currency || "NGN",
   }).eq("id", selectedCourse.value.id);
   if (error) errorMessage.value = error.message;
   else notice.value = "Course details saved.";
@@ -109,8 +120,9 @@ async function createLesson() {
     content_body: lessonDraft.content_body.trim(),
     content_url: lessonDraft.content_url.trim() || null,
     duration_minutes: lessonDraft.duration_minutes ? Number(lessonDraft.duration_minutes) : null,
+    content_path: null,
     position: Math.max(-1, ...lessons.value.map((lesson) => lesson.position)) + 1,
-  }).select("id, title, content_body, content_url, position, duration_minutes").single();
+  }).select("id, title, content_body, content_url, content_path, position, duration_minutes").single();
   if (error) errorMessage.value = error.message;
   else {
     lessons.value.push(data);
@@ -132,6 +144,15 @@ async function saveLesson(lesson) {
   if (error) errorMessage.value = error.message;
   else notice.value = "Lesson saved.";
   saving.value = false;
+}
+
+async function saveLessonFile(lesson, path) {
+  const { error } = await supabase.from("lessons").update({ content_path: path }).eq("id", lesson.id);
+  if (error) errorMessage.value = error.message;
+  else {
+    lesson.content_path = path;
+    notice.value = "Private lesson file attached.";
+  }
 }
 
 async function moveLesson(index, direction) {
@@ -211,10 +232,16 @@ async function deleteLesson(lesson) {
               <select v-model="courseDraft.level" class="h-11 w-full border border-border bg-white px-3 font-normal outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"><option value="beginner">Beginner</option><option value="intermediate">Intermediate</option><option value="advanced">Advanced</option></select>
             </label>
           </div>
+          <label class="flex min-h-11 items-center gap-3 border border-border px-3 text-sm font-semibold">
+            <input v-model="courseDraft.is_free" type="checkbox" class="size-4 accent-primary" /> Free course
+          </label>
+          <label v-if="!courseDraft.is_free" class="block space-y-1.5 text-sm font-semibold">Price (NGN)
+            <input v-model="courseDraft.price" type="number" min="1" step="0.01" required class="h-11 w-full border border-border px-3 font-normal outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" placeholder="e.g. 5000" />
+          </label>
           <label class="block space-y-1.5 text-sm font-semibold">Cover image URL
             <input v-model="courseDraft.thumbnail_url" type="url" class="h-11 w-full border border-border px-3 font-normal outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" placeholder="https://..." />
           </label>
-          <button type="submit" :disabled="saving || !courseDraft.title.trim()" class="inline-flex min-h-11 w-full items-center justify-center gap-2 bg-primary px-4 text-sm font-bold text-white outline-none hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-60"><LoaderCircle v-if="saving" :size="16" class="animate-spin" /><Plus v-else :size="16" />Create course draft</button>
+          <button type="submit" :disabled="saving || !courseDraft.title.trim() || (!courseDraft.is_free && !(Number(courseDraft.price) > 0))" class="inline-flex min-h-11 w-full items-center justify-center gap-2 bg-primary px-4 text-sm font-bold text-white outline-none hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-60"><LoaderCircle v-if="saving" :size="16" class="animate-spin" /><Plus v-else :size="16" />Create course draft</button>
         </form>
       </section>
 
@@ -225,7 +252,7 @@ async function deleteLesson(lesson) {
         <div v-else class="divide-y divide-border border border-border bg-white">
           <article v-for="course in courses" :key="course.id" class="p-4 sm:p-5">
             <div class="flex flex-wrap items-start justify-between gap-3">
-              <button type="button" class="text-left outline-none focus-visible:ring-2 focus-visible:ring-primary" @click="selectCourse(course)"><span class="block font-bold">{{ course.title }}</span><span class="mt-1 block text-xs text-muted-foreground">{{ course.category }} · <span class="capitalize">{{ course.level }}</span></span></button>
+              <button type="button" class="text-left outline-none focus-visible:ring-2 focus-visible:ring-primary" @click="selectCourse(course)"><span class="block font-bold">{{ course.title }}</span><span class="mt-1 block text-xs text-muted-foreground">{{ course.category }} · <span class="capitalize">{{ course.level }}</span> · {{ course.is_free ? 'Free' : `NGN ${(course.price_minor / 100).toLocaleString()}` }}</span></button>
               <div class="flex items-center gap-2"><span class="rounded-full px-2.5 py-1 text-xs font-bold" :class="course.published ? 'bg-emerald-50 text-emerald-800' : 'bg-secondary text-muted-foreground'">{{ course.published ? 'Published' : 'Draft' }}</span><button type="button" class="min-h-9 border border-primary px-3 text-xs font-bold text-primary hover:bg-secondary" @click="togglePublished(course)">{{ course.published ? 'Unpublish' : 'Publish' }}</button></div>
             </div>
           </article>
@@ -238,6 +265,8 @@ async function deleteLesson(lesson) {
       <div class="grid gap-3 md:grid-cols-2">
         <label class="space-y-1 text-xs font-bold">Title<input v-model="selectedCourse.title" maxlength="160" class="h-10 w-full border border-border px-3 text-sm font-normal outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" /></label>
         <label class="space-y-1 text-xs font-bold">Category<input v-model="selectedCourse.category" maxlength="80" class="h-10 w-full border border-border px-3 text-sm font-normal outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" /></label>
+        <label class="flex min-h-10 items-center gap-2 text-sm font-semibold"><input v-model="selectedCourse.is_free" type="checkbox" class="size-4 accent-primary" /> Free course</label>
+        <label v-if="!selectedCourse.is_free" class="space-y-1 text-xs font-bold">Price (NGN)<input v-model="selectedCourse.price" type="number" min="1" step="0.01" class="h-10 w-full border border-border px-3 text-sm font-normal outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" /></label>
         <label class="space-y-1 text-xs font-bold">Description<textarea v-model="selectedCourse.description" rows="3" class="w-full border border-border px-3 py-2 text-sm font-normal outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" /></label>
         <div class="space-y-3"><label class="block space-y-1 text-xs font-bold">Cover image URL<input v-model="selectedCourse.thumbnail_url" type="url" class="h-10 w-full border border-border px-3 text-sm font-normal outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" /></label><button type="button" :disabled="saving" class="inline-flex min-h-9 items-center gap-2 border border-primary px-3 text-xs font-bold text-primary hover:bg-secondary disabled:opacity-60" @click="saveCourse"><Save :size="14" />Save course details</button></div>
       </div>
@@ -258,10 +287,12 @@ async function deleteLesson(lesson) {
           <input v-model="lesson.content_body" :aria-label="`Lesson ${index + 1} text`" class="h-10 border border-border px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" placeholder="Lesson text" />
           <input v-model="lesson.content_url" type="url" :aria-label="`Lesson ${index + 1} resource URL`" class="h-10 border border-border px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" placeholder="Resource URL" />
           <div class="flex items-center gap-1"><button type="button" :disabled="index === 0 || saving" class="grid size-9 place-items-center border border-border text-sm font-bold hover:bg-secondary disabled:opacity-40" :aria-label="`Move ${lesson.title} up`" @click="moveLesson(index, -1)">↑</button><button type="button" :disabled="index === lessons.length - 1 || saving" class="grid size-9 place-items-center border border-border text-sm font-bold hover:bg-secondary disabled:opacity-40" :aria-label="`Move ${lesson.title} down`" @click="moveLesson(index, 1)">↓</button><button type="button" class="grid size-9 place-items-center text-red-700 outline-none hover:bg-red-50 focus-visible:ring-2 focus-visible:ring-red-700" :aria-label="`Delete ${lesson.title}`" @click="deleteLesson(lesson)"><Trash2 :size="16" /></button><button type="button" class="grid size-9 place-items-center border border-primary text-primary outline-none hover:bg-secondary focus-visible:ring-2 focus-visible:ring-primary" :aria-label="`Save ${lesson.title}`" @click="saveLesson(lesson)"><Save :size="15" /></button></div>
+          <div class="lg:col-start-2 lg:col-span-4"><PrivateFileField :model-value="lesson.content_path || ''" :course-id="selectedCourse.id" kind="material" label="Lesson book or class material" @update:model-value="saveLessonFile(lesson, $event)" /></div>
         </li>
         <li v-if="!lessons.length" class="py-5 text-sm text-muted-foreground">No lessons in this course yet.</li>
       </ol>
       <InstructorAssessments :key="selectedCourse.id" :course-id="selectedCourse.id" />
     </section>
+    <InstructorBooks v-if="profile" :instructor-id="profile.user_id" />
   </section>
 </template>

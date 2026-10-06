@@ -2,6 +2,7 @@
 import { onMounted, reactive, ref } from "vue";
 import { Check, ClipboardCheck, LoaderCircle, Plus, Send, Trash2 } from "lucide-vue-next";
 import { supabase } from "@/lib/supabase";
+import PrivateFileField from "@/components/courses/PrivateFileField.vue";
 
 const props = defineProps({ courseId: { type: String, required: true } });
 const quizzes = ref([]);
@@ -26,7 +27,7 @@ onMounted(loadAssessments);
 async function loadAssessments() {
   const [quizResult, assignmentResult] = await Promise.all([
     supabase.from("quizzes").select("id, title, instructions, time_limit_minutes, published, created_at").eq("course_id", props.courseId).order("created_at", { ascending: false }),
-    supabase.from("assignments").select("id, title, instructions, due_at, points, published, created_at").eq("course_id", props.courseId).order("created_at", { ascending: false }),
+    supabase.from("assignments").select("id, title, instructions, due_at, points, published, resource_path, created_at").eq("course_id", props.courseId).order("created_at", { ascending: false }),
   ]);
   const failure = quizResult.error || assignmentResult.error;
   if (failure) errorMessage.value = failure.message;
@@ -137,7 +138,7 @@ async function createAssignment() {
     due_at: assignmentDraft.due_at ? new Date(assignmentDraft.due_at).toISOString() : null,
     points: Number(assignmentDraft.points),
     published: false,
-  }).select("id, title, instructions, due_at, points, published, created_at").single();
+  }).select("id, title, instructions, due_at, points, published, resource_path, created_at").single();
   if (error) errorMessage.value = error.message;
   else {
     assignments.value = [data, ...assignments.value];
@@ -157,6 +158,15 @@ async function toggleAssignment(assignment) {
     notice.value = assignment.published ? "Assignment published." : "Assignment moved back to drafts.";
   }
   saving.value = false;
+}
+
+async function saveAssignmentFile(assignment, path) {
+  const { error } = await supabase.from("assignments").update({ resource_path: path }).eq("id", assignment.id);
+  if (error) errorMessage.value = error.message;
+  else {
+    assignment.resource_path = path;
+    notice.value = "Private assignment resource attached.";
+  }
 }
 
 async function selectAssignment(assignment) {
@@ -269,6 +279,7 @@ async function saveReview(submission) {
             <article v-for="assignment in assignments" :key="assignment.id" class="flex flex-wrap items-center justify-between gap-3 py-3">
               <button type="button" class="text-left font-semibold outline-none focus-visible:ring-2 focus-visible:ring-primary" @click="activeTab = 'submissions'; selectAssignment(assignment)">{{ assignment.title }} <span class="ml-1 text-xs text-muted-foreground">{{ assignment.published ? 'Published' : 'Draft' }} · {{ assignment.points }} pts</span></button>
               <button type="button" class="min-h-9 border border-primary px-3 text-xs font-bold text-primary hover:bg-secondary" @click="toggleAssignment(assignment)">{{ assignment.published ? 'Unpublish' : 'Publish' }}</button>
+              <PrivateFileField :model-value="assignment.resource_path || ''" :course-id="courseId" :assignment-id="assignment.id" kind="assignment-resource" label="Assignment materials" @update:model-value="saveAssignmentFile(assignment, $event)" />
             </article>
             <p v-if="!assignments.length" class="py-3 text-sm text-muted-foreground">No assignments yet.</p>
           </div>

@@ -147,14 +147,14 @@ const handleSubmit = async () => {
           >
             <FeedbackMessage :message="serverError" toast />
             <FeedbackMessage :message="successMessage" variant="success" />
-            <fieldset class="grid grid-cols-3 border border-border bg-white p-1">
+            <fieldset class="grid grid-cols-3 border border-border rounded-full bg-white p-1">
               <legend class="sr-only">Sign-in type</legend>
               <button
                 v-for="option in [{ id: 'student', label: 'Learner' }, { id: 'instructor', label: 'Instructor' }, { id: 'super_admin', label: 'Super admin' }]"
                 :key="option.id"
                 type="button"
                 :aria-pressed="loginType === option.id"
-                class="min-h-12 px-1 text-sm font-bold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary"
+                class="min-h-12 px-1 rounded-full text-sm font-bold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary"
                 :class="loginType === option.id ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-secondary hover:text-foreground'"
                 @click="loginType = option.id; serverError = ''; router.replace({ query: { ...route.query, type: option.id } })"
               >

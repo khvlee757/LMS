@@ -64,9 +64,14 @@ create table if not exists public.assignment_submissions (
   student_id uuid not null references public.profiles (user_id) on delete cascade,
   response text not null default '',
   attachment_url text,
+  attachment_path text,
   submitted_at timestamptz not null default now(),
   primary key (assignment_id, student_id)
 );
+
+alter table public.lessons add column if not exists content_path text;
+alter table public.assignments add column if not exists resource_path text;
+alter table public.assignment_submissions add column if not exists attachment_path text;
 
 create table if not exists public.assignment_reviews (
   assignment_id uuid not null references public.assignments (id) on delete cascade,

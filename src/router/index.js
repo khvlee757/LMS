@@ -37,6 +37,16 @@ const routes = [
         component: () => import('../views/CourseDetail.vue'),
       },
       {
+        path: 'books',
+        name: 'books',
+        component: () => import('../views/Books.vue'),
+      },
+      {
+        path: 'payment/return',
+        name: 'payment-return',
+        component: () => import('../views/PaymentReturn.vue'),
+      },
+      {
         path: 'instructor',
         name: 'instructor',
         component: () => import('../views/Instructor.vue'),

@@ -25,6 +25,12 @@ const visibleCourses = computed(() => courses.value.filter((course) => {
   return !search || `${course.title} ${course.description ?? ""} ${course.category ?? ""}`.toLowerCase().includes(search);
 }));
 
+function formattedPrice(course) {
+  const currency = course.currency || "NGN";
+  const digits = new Intl.NumberFormat(undefined, { style: "currency", currency }).resolvedOptions().maximumFractionDigits;
+  return new Intl.NumberFormat(undefined, { style: "currency", currency }).format(course.price_minor / (10 ** digits));
+}
+
 onMounted(async () => {
   const { user } = await getAuthenticatedProfile();
   if (!supabase || !user) {
@@ -35,7 +41,7 @@ onMounted(async () => {
   }
 
   const [courseResult, enrollmentResult] = await Promise.all([
-    supabase.from("courses").select("id, title, description, category, level, thumbnail_url, instructor_id").eq("published", true).order("created_at", { ascending: false }),
+    supabase.from("courses").select("id, title, description, category, level, thumbnail_url, instructor_id, is_free, price_minor, currency").eq("published", true).order("created_at", { ascending: false }),
     supabase.from("enrollments").select("course_id").eq("user_id", user.id),
   ]);
 
@@ -61,6 +67,24 @@ async function enroll(course) {
     enrollingId.value = "";
     return;
   }
+  if (!course.is_free) {
+    const { data, error } = await supabase.functions.invoke("paystack-checkout", {
+      body: { productType: "course", productId: course.id },
+    });
+    if (error) {
+      message.value = error.message;
+      messageIsError.value = true;
+    } else if (data?.authorizationUrl) {
+      window.location.assign(data.authorizationUrl);
+      return;
+    } else {
+      message.value = data?.error || "Paystack checkout could not be started.";
+      messageIsError.value = true;
+    }
+    enrollingId.value = "";
+    return;
+  }
+
   const { error } = await supabase.from("enrollments").insert({ user_id: userData.user.id, course_id: course.id });
   if (error && error.code !== "23505") {
     message.value = error.message;
@@ -102,7 +126,7 @@ async function enroll(course) {
         <template #action>
           <button v-if="!enrolledIds.has(course.id)" type="button" class="inline-flex min-h-10 w-full items-center justify-center gap-2 bg-primary px-4 text-sm font-bold text-white outline-none hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-60" :disabled="enrollingId === course.id" @click="enroll(course)">
             <LoaderCircle v-if="enrollingId === course.id" :size="16" class="animate-spin" />
-            {{ enrollingId === course.id ? 'Enrolling...' : 'Enroll now' }}
+            {{ enrollingId === course.id ? 'Please wait...' : course.is_free ? 'Enroll free' : `Buy · ${formattedPrice(course)}` }}
           </button>
           <RouterLink v-else to="/learning" class="inline-flex min-h-10 w-full items-center justify-center gap-2 border border-primary px-4 text-sm font-bold text-primary hover:bg-secondary">Go to my learning <ArrowRight :size="15" /></RouterLink>
         </template>
