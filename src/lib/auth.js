@@ -12,7 +12,7 @@ export async function getAuthenticatedProfile() {
 
   const { data: profile, error } = await supabase
     .from("profiles")
-    .select("user_id, full_name, role")
+    .select("user_id, email, full_name, role, phone, created_at")
     .eq("user_id", userData.user.id)
     .maybeSingle();
 

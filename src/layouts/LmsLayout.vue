@@ -30,9 +30,6 @@ const navigation = computed(() => [
   ...(["instructor", "super_admin"].includes(profile.value?.role)
     ? [{ label: "Instructor studio", to: "/instructor", icon: SquarePen }]
     : []),
-  ...(profile.value?.role === "super_admin"
-    ? [{ label: "Administration", to: "/admin", icon: ShieldCheck }]
-    : []),
 ]);
 const pageTitle = computed(() => {
   const titles = {
@@ -118,6 +115,24 @@ async function signOut() {
         </RouterLink>
       </nav>
 
+      <!-- Super Admin Dedicated Console Switcher -->
+      <div v-if="profile?.role === 'super_admin'" class="mx-1 mt-6 rounded-lg border border-white/20 bg-white/10 p-3 text-white">
+        <div class="flex items-center gap-1.5 text-xs font-bold text-emerald-300">
+          <ShieldCheck :size="15" />
+          <span>Super Admin Mode</span>
+        </div>
+        <p class="mt-1 text-[11px] text-white/80">
+          Previewing the learner space.
+        </p>
+        <RouterLink
+          to="/admin"
+          class="mt-2.5 flex items-center justify-center gap-1.5 rounded bg-emerald-600 py-1.5 text-xs font-bold text-white transition-colors hover:bg-emerald-500"
+          @click="menuOpen = false"
+        >
+          Open Admin Console →
+        </RouterLink>
+      </div>
+
       <div class="absolute inset-x-4 bottom-4 border-t border-border pt-4">
         <div class="flex items-center gap-3 px-2 pb-3">
           <span class="grid size-10 shrink-0 place-items-center rounded-full bg-accent font-bold text-accent-foreground">{{ initials }}</span>
@@ -146,9 +161,22 @@ async function signOut() {
         <div class="flex items-center gap-2 text-sm text-muted-foreground">
           <span>Workspace</span><span aria-hidden="true">/</span><span class="font-semibold text-foreground">{{ pageTitle }}</span>
         </div>
-        <div class="flex items-center gap-2 text-sm font-medium text-foreground/80">
-          <span class="size-2 rounded-full bg-emerald-500" aria-hidden="true" />
-          Learning space
+        <div class="flex items-center gap-4">
+          <div v-if="profile?.role === 'super_admin'" class="flex items-center gap-3">
+            <span class="rounded bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-800">
+              Learner Preview Mode
+            </span>
+            <RouterLink
+              to="/admin"
+              class="inline-flex items-center gap-1.5 rounded-md bg-[#163b32] px-3 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-[#112922]"
+            >
+              <ShieldCheck :size="14" /> Return to Admin Console
+            </RouterLink>
+          </div>
+          <div v-else class="flex items-center gap-2 text-sm font-medium text-foreground/80">
+            <span class="size-2 rounded-full bg-emerald-500" aria-hidden="true" />
+            Learning space
+          </div>
         </div>
       </div>
       <div class="mx-auto w-full max-w-7xl px-4 py-7 sm:px-6 lg:px-8 lg:py-9">

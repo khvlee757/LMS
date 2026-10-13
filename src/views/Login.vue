@@ -4,7 +4,7 @@ import { useRouter } from "vue-router";
 import { useRoute } from "vue-router";
 import { defineRule, useForm, useField } from "vee-validate";
 import { required, email, min } from "@vee-validate/rules";
-import { LoaderCircle } from "lucide-vue-next";
+import { LoaderCircle, ShieldCheck } from "lucide-vue-next";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,7 +31,7 @@ defineRule("min", min);
 const router = useRouter();
 const route = useRoute();
 const { validate } = useForm();
-const loginType = ref(["student", "instructor", "super_admin"].includes(route.query.type) ? route.query.type : "student");
+const loginType = ref(["student", "instructor"].includes(route.query.type) ? route.query.type : "student");
 const isSubmitting = ref(false);
 const showPassword = ref(false);
 const serverError = ref("");
@@ -104,19 +104,21 @@ const handleSubmit = async () => {
     const { error: activityError } = await supabase
       .from("login_activity")
       .insert({ user_id: user.id });
-    successMessage.value = activityError && activityError.code !== "23505"
-      ? "Signed in. Daily activity tracking is not available yet."
-      : "Signed in. Opening your learning space...";
+    successMessage.value = profile.role === "super_admin"
+      ? "Signed in. Opening executive admin console..."
+      : activityError && activityError.code !== "23505"
+        ? "Signed in. Daily activity tracking is not available yet."
+        : "Signed in. Opening your learning space...";
     const redirect = typeof router.currentRoute.value.query.redirect === "string"
       ? router.currentRoute.value.query.redirect
-      : loginType.value === "super_admin"
+      : (profile.role === "super_admin" || loginType.value === "super_admin")
         ? "/admin"
-        : loginType.value === "instructor"
+        : (profile.role === "instructor" || loginType.value === "instructor")
           ? "/instructor"
           : "/dashboard";
     const safeRedirect = redirect.startsWith("/") && !redirect.startsWith("//")
       ? redirect
-      : "/dashboard";
+      : (profile.role === "super_admin" ? "/admin" : "/dashboard");
     await router.replace(safeRedirect);
   } catch (error) {
     serverError.value = error.message || "We couldn't sign you in. Check your details and try again.";
@@ -147,10 +149,10 @@ const handleSubmit = async () => {
           >
             <FeedbackMessage :message="serverError" toast />
             <FeedbackMessage :message="successMessage" variant="success" />
-            <fieldset class="grid grid-cols-3 border border-border rounded-full bg-white p-1">
+            <fieldset class="grid grid-cols-2 border border-border rounded-full bg-white p-1">
               <legend class="sr-only">Sign-in type</legend>
               <button
-                v-for="option in [{ id: 'student', label: 'Learner' }, { id: 'instructor', label: 'Instructor' }, { id: 'super_admin', label: 'Super admin' }]"
+                v-for="option in [{ id: 'student', label: 'Learner' }, { id: 'instructor', label: 'Instructor' }]"
                 :key="option.id"
                 type="button"
                 :aria-pressed="loginType === option.id"
@@ -235,6 +237,15 @@ const handleSubmit = async () => {
                 class="ml-1 font-semibold text-primary underline underline-offset-4"
               >
                 Register
+              </RouterLink>
+            </div>
+
+            <div class="border-t border-border/80 pt-4 text-center">
+              <RouterLink
+                to="/admin/login"
+                class="inline-flex items-center gap-1.5 text-xs font-bold text-muted-foreground transition-colors hover:text-primary"
+              >
+                <ShieldCheck :size="13" /> Platform Administrator? Sign in here
               </RouterLink>
             </div>
           </form>
