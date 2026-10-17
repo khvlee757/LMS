@@ -98,7 +98,7 @@ async function signOut() {
     <header class="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-[#112922] px-4 text-white lg:hidden">
       <RouterLink to="/admin" class="flex items-center gap-2.5 font-extrabold tracking-tight">
         <img :src="northstarMark" alt="" class="size-8" />
-        <span class="flex items-center gap-1.5 text-base">
+        <span class="flex items-center gap-1.5 text-md font-extrabold text-white">
           Northstar <span class="rounded bg-emerald-500/20 px-1.5 py-0.5 text-xs font-semibold text-emerald-300">Admin</span>
         </span>
       </RouterLink>

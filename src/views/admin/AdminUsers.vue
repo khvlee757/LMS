@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from "vue";
 import {
   Check,
+  Eye,
   Flame,
   GraduationCap,
   LoaderCircle,
@@ -12,13 +13,16 @@ import {
   Users,
 } from "lucide-vue-next";
 import { useAdminData } from "@/lib/useAdminData";
+import InstructorVerificationModal from "@/components/admin/InstructorVerificationModal.vue";
 
 const {
   people,
+  applications,
   loading,
   error,
   notice,
   loginSummary,
+  reviewApplication,
   demoteInstructorToStudent,
   fetchAdminData,
 } = useAdminData();
@@ -30,6 +34,18 @@ onMounted(async () => {
 const searchQuery = ref("");
 const roleFilter = ref("all");
 const updatingUserId = ref("");
+const activeModalApp = ref(null);
+
+function getApplication(userId) {
+  return applications.value.find((app) => app.user_id === userId);
+}
+
+async function handleModalReview({ application, status, notes }) {
+  updatingUserId.value = application.user_id;
+  await reviewApplication(application, status, notes);
+  updatingUserId.value = "";
+  activeModalApp.value = null;
+}
 
 const filteredPeople = computed(() => {
   let list = people.value;
@@ -197,23 +213,34 @@ async function handleDemote(user) {
 
             <!-- Actions -->
             <td class="px-5 py-4 text-right">
-              <div v-if="person.role === 'instructor'" class="inline-flex items-center gap-2">
+              <div class="inline-flex items-center justify-end gap-2">
                 <button
+                  v-if="getApplication(person.user_id)"
                   type="button"
-                  :disabled="updatingUserId === person.user_id"
-                  class="inline-flex items-center gap-1 rounded border border-border px-2.5 py-1 text-xs font-bold text-red-700 hover:bg-red-50 disabled:opacity-50"
-                  @click="handleDemote(person)"
+                  class="inline-flex items-center gap-1 rounded border border-primary/30 bg-primary/5 px-2.5 py-1 text-xs font-bold text-primary hover:bg-primary/10"
+                  @click="activeModalApp = getApplication(person.user_id)"
                 >
-                  <LoaderCircle v-if="updatingUserId === person.user_id" :size="12" class="animate-spin" />
-                  <UserX v-else :size="12" /> Demote to Learner
+                  <Eye :size="12" /> Verify
                 </button>
+
+                <div v-if="person.role === 'instructor'">
+                  <button
+                    type="button"
+                    :disabled="updatingUserId === person.user_id"
+                    class="inline-flex items-center gap-1 rounded border border-border px-2.5 py-1 text-xs font-bold text-red-700 hover:bg-red-50 disabled:opacity-50"
+                    @click="handleDemote(person)"
+                  >
+                    <LoaderCircle v-if="updatingUserId === person.user_id" :size="12" class="animate-spin" />
+                    <UserX v-else :size="12" /> Demote
+                  </button>
+                </div>
+                <span v-else-if="person.role === 'super_admin'" class="text-xs font-semibold text-emerald-700">
+                  Owner
+                </span>
+                <span v-else-if="!getApplication(person.user_id)" class="text-xs text-muted-foreground">
+                  Standard
+                </span>
               </div>
-              <span v-else-if="person.role === 'super_admin'" class="text-xs font-semibold text-emerald-700">
-                System Owner
-              </span>
-              <span v-else class="text-xs text-muted-foreground">
-                Standard access
-              </span>
             </td>
           </tr>
 
@@ -225,6 +252,16 @@ async function handleDemote(user) {
         </tbody>
       </table>
     </div>
+
+    <!-- Instructor Verification Modal -->
+    <InstructorVerificationModal
+      v-if="activeModalApp"
+      :application="activeModalApp"
+      :reviewing="updatingUserId === activeModalApp?.user_id"
+      @approve="handleModalReview({ application: $event.application, status: 'approved', notes: $event.notes })"
+      @reject="handleModalReview({ application: $event.application, status: 'rejected', notes: $event.notes })"
+      @close="activeModalApp = null"
+    />
   </div>
 </template>
 
