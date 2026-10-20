@@ -17,28 +17,13 @@ import InstructorVerificationFields from "@/components/auth/InstructorVerificati
 import RegisterAccountFields from "@/components/auth/RegisterAccountFields.vue";
 
 defineRule("required", required);
-defineRule("fullName", (value) => {
-  const words = String(value ?? "").trim().split(/\s+/).filter(Boolean);
-  return words.length >= 2 || "Enter your first and last name.";
-});
-defineRule("emailFormat", (value) =>
-  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value ?? "").trim()) ||
-  "Enter a valid email address."
-);
-defineRule("internationalPhone", (value) => {
-  const normalized = String(value ?? "").replace(/[\s().-]/g, "");
-  return /^\+[1-9]\d{7,14}$/.test(normalized) ||
-    "Enter an international number with country code, such as +1 202 555 0123.";
-});
-defineRule("strongPassword", (value) => {
-  const candidate = String(value ?? "");
-  return (
-    candidate.length >= 8 &&
-    /[a-z]/.test(candidate) &&
-    /[A-Z]/.test(candidate) &&
-    /\d/.test(candidate) &&
-    /[^A-Za-z0-9\s]/.test(candidate)
-  ) || "Use at least 8 characters with uppercase, lowercase, number, and symbol.";
+defineRule("fullName", (v) => String(v ?? "").trim().split(/\s+/).filter(Boolean).length >= 2 || "Enter your first and last name.");
+defineRule("emailFormat", (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v ?? "").trim()) || "Enter a valid email address.");
+defineRule("internationalPhone", (v) => /^\+[1-9]\d{7,14}$/.test(String(v ?? "").replace(/[\s().-]/g, "")) || "Enter an international number with country code, such as +1 202 555 0123.");
+defineRule("strongPassword", (v) => {
+  const c = String(v ?? "");
+  return (c.length >= 8 && /[a-z]/.test(c) && /[A-Z]/.test(c) && /\d/.test(c) && /[^A-Za-z0-9\s]/.test(c)) ||
+    "Use at least 8 characters with uppercase, lowercase, number, and symbol.";
 });
 
 const router = useRouter();
@@ -135,6 +120,20 @@ const handleSubmit = async () => {
     });
 
     if (error) throw error;
+
+    if (accountType.value === "instructor" && data?.user && data?.session) {
+      await supabase.from("instructor_applications").upsert({
+        user_id: data.user.id,
+        organization: organization.value.trim(),
+        professional_title: professionalTitle.value.trim(),
+        expertise: expertise.value.trim(),
+        experience_years: Number(experienceYears.value) || 0,
+        qualification: qualification.value.trim(),
+        verification_url: verificationUrl.value.trim(),
+        teaching_statement: teachingStatement.value.trim(),
+        status: "pending",
+      }, { onConflict: "user_id" }).catch(() => {});
+    }
 
     if (!data.session) {
       successMessage.value = accountType.value === "instructor"

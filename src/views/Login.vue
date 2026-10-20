@@ -22,13 +22,7 @@ import PasswordField from "@/components/auth/PasswordField.vue";
 import FeedbackMessage from "@/components/FeedbackMessage.vue";
 import ForgotPasswordModal from "@/components/auth/ForgotPasswordModal.vue";
 import SocialLoginButtons from "@/components/auth/SocialLoginButtons.vue";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 defineRule("required", required);
 defineRule("email", email);
@@ -44,15 +38,8 @@ const showForgotPassword = ref(false);
 const serverError = ref("");
 const successMessage = ref("");
 
-const { value: emailValue, errorMessage: emailError } = useField(
-  "email",
-  "required|email"
-);
-
-const { value: password, errorMessage: passwordError } = useField(
-  "password",
-  "required|min:8"
-);
+const { value: emailValue, errorMessage: emailError } = useField("email", "required|email");
+const { value: password, errorMessage: passwordError } = useField("password", "required|min:8");
 
 onMounted(() => {
   const savedEmail = localStorage.getItem("northstar_remembered_email");
@@ -104,7 +91,23 @@ const handleSubmit = async () => {
           .select("status")
           .eq("user_id", user.id)
           .maybeSingle();
-        if (application?.status === "pending") {
+
+        if (!application && user.user_metadata?.instructor_application) {
+          const m = user.user_metadata.instructor_application;
+          await supabase.from("instructor_applications").upsert({
+            user_id: user.id,
+            organization: m.organization || "Independent",
+            professional_title: m.professional_title || "Instructor",
+            expertise: m.expertise || "General",
+            experience_years: Number(m.experience_years) || 0,
+            qualification: m.qualification || "Self-certified",
+            verification_url: m.verification_url || "",
+            teaching_statement: m.teaching_statement || "",
+            status: "pending",
+          }, { onConflict: "user_id" }).catch(() => {});
+        }
+
+        if (application?.status === "pending" || user.user_metadata?.instructor_application) {
           accessMessage = "Your instructor application is still under review. Sign in as a learner until it is approved.";
         }
       }
@@ -129,18 +132,9 @@ const handleSubmit = async () => {
         ? "Signed in. Daily activity tracking is not available yet."
         : "Signed in. Opening your learning space...";
 
-    const redirect = typeof router.currentRoute.value.query.redirect === "string"
-      ? router.currentRoute.value.query.redirect
-      : (profile.role === "super_admin" || loginType.value === "super_admin")
-        ? "/admin"
-        : (profile.role === "instructor" || loginType.value === "instructor")
-          ? "/instructor"
-          : "/dashboard";
-
-    const safeRedirect = redirect.startsWith("/") && !redirect.startsWith("//")
-      ? redirect
-      : (profile.role === "super_admin" ? "/admin" : "/dashboard");
-
+    const qRedirect = router.currentRoute.value.query.redirect;
+    const defaultRoute = profile.role === "super_admin" ? "/admin" : profile.role === "instructor" ? "/instructor" : "/dashboard";
+    const safeRedirect = typeof qRedirect === "string" && qRedirect.startsWith("/") && !qRedirect.startsWith("//") ? qRedirect : defaultRoute;
     await router.replace(safeRedirect);
   } catch (error) {
     serverError.value = error.message || "We couldn't sign you in. Check your details and try again.";
@@ -154,12 +148,8 @@ const handleSubmit = async () => {
   <AuthPageLayout :animation-src="animation">
     <Card class="w-full max-w-lg border-0 bg-transparent shadow-none">
       <CardHeader class="space-y-2">
-        <CardTitle class="text-4xl font-extrabold text-primary sm:text-5xl">
-          Sign in
-        </CardTitle>
-        <CardDescription class="text-base text-primary/70 sm:text-lg">
-          Choose your workspace, then sign in with your account.
-        </CardDescription>
+        <CardTitle class="text-4xl font-extrabold text-primary sm:text-5xl">Sign in</CardTitle>
+        <CardDescription class="text-base text-primary/70 sm:text-lg">Choose your workspace, then sign in with your account.</CardDescription>
       </CardHeader>
 
       <CardContent>
@@ -184,18 +174,11 @@ const handleSubmit = async () => {
               </button>
             </fieldset>
 
-            <!-- Role Clarification Helper -->
-            <div
-              v-if="loginType === 'student'"
-              class="rounded-xl border border-primary/15 bg-primary/5 p-3 text-xs leading-relaxed text-primary"
-            >
+            <div v-if="loginType === 'student'" class="rounded-xl border border-primary/15 bg-primary/5 p-3 text-xs leading-relaxed text-primary">
               <span class="font-bold flex items-center gap-1.5"><GraduationCap :size="15" /> Learner Workspace:</span>
               <p class="mt-0.5 text-primary/80">Access course catalog, study materials, quizzes, and your personal progress.</p>
             </div>
-            <div
-              v-else
-              class="rounded-xl border border-primary/15 bg-primary/5 p-3 text-xs leading-relaxed text-primary"
-            >
+            <div v-else class="rounded-xl border border-primary/15 bg-primary/5 p-3 text-xs leading-relaxed text-primary">
               <span class="font-bold flex items-center gap-1.5"><SquarePen :size="15" /> Instructor Studio:</span>
               <p class="mt-0.5 text-primary/80">Manage course curricula, upload digital books, track students, and grade lessons.</p>
             </div>

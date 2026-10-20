@@ -215,20 +215,17 @@ begin
   end if;
 
   if new.role is distinct from old.role then
-    if old.role = 'super_admin'::public.app_role
-      or new.role = 'super_admin'::public.app_role then
-      if (select auth.uid()) is not null then
-        raise exception 'Super-admin access can only be provisioned from the database';
-      end if;
-    elsif new.role = 'instructor'::public.app_role then
-      if not (select private.is_super_admin()) or not exists (
+    if not (select private.is_super_admin()) then
+      raise exception 'Only an existing super administrator can change account roles';
+    end if;
+
+    if new.role = 'instructor'::public.app_role then
+      if not exists (
         select 1 from public.instructor_applications a
         where a.user_id = new.user_id and a.status = 'approved'
       ) then
         raise exception 'An approved instructor application is required';
       end if;
-    elsif not (select private.is_super_admin()) then
-      raise exception 'Only the super admin can change account roles';
     end if;
   end if;
 

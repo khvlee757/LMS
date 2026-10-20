@@ -5,11 +5,6 @@ import { defineRule, useForm, useField } from "vee-validate";
 import { required, email, min } from "@vee-validate/rules";
 import {
   ArrowLeft,
-  ChevronDown,
-  ChevronUp,
-  Code,
-  Copy,
-  Check,
   Eye,
   EyeOff,
   LoaderCircle,
@@ -31,8 +26,6 @@ const isSubmitting = ref(false);
 const showPassword = ref(false);
 const serverError = ref("");
 const successMessage = ref("");
-const showSqlHelper = ref(false);
-const copiedSql = ref(false);
 
 const { value: emailValue, errorMessage: emailError } = useField(
   "email",
@@ -50,18 +43,6 @@ onMounted(async () => {
     await router.replace("/admin");
   }
 });
-
-const sqlSnippet = `UPDATE public.profiles
-SET role = 'super_admin'
-WHERE email = lower('YOUR_EMAIL_HERE');`;
-
-function copySql() {
-  navigator.clipboard.writeText(sqlSnippet);
-  copiedSql.value = true;
-  setTimeout(() => {
-    copiedSql.value = false;
-  }, 2000);
-}
 
 const handleAdminLogin = async () => {
   if (isSubmitting.value) return;
@@ -226,38 +207,6 @@ const handleAdminLogin = async () => {
         <!-- Security Notice -->
         <div class="mt-6 rounded-lg border border-white/5 bg-black/30 p-3 text-[11px] text-slate-400 leading-relaxed text-center">
           Security policy: Only accounts assigned the <code class="font-mono text-emerald-300">super_admin</code> role can authenticate here.
-        </div>
-
-        <!-- Accordion for first-time setup SQL -->
-        <div class="mt-4 border-t border-white/10 pt-3">
-          <button
-            type="button"
-            class="flex w-full items-center justify-between text-xs font-semibold text-slate-400 hover:text-white"
-            @click="showSqlHelper = !showSqlHelper"
-          >
-            <span class="flex items-center gap-1.5">
-              <Code :size="13" /> Need to grant super_admin role?
-            </span>
-            <ChevronUp v-if="showSqlHelper" :size="14" />
-            <ChevronDown v-else :size="14" />
-          </button>
-
-          <div v-if="showSqlHelper" class="mt-3 space-y-2 rounded-lg bg-black/50 p-3 text-xs">
-            <p class="text-[11px] text-slate-300">
-              Run this once in your Supabase SQL Editor with your registered email:
-            </p>
-            <div class="relative">
-              <pre class="overflow-x-auto rounded bg-black/60 p-2 font-mono text-[11px] text-emerald-300">{{ sqlSnippet }}</pre>
-              <button
-                type="button"
-                class="absolute right-2 top-2 rounded bg-white/10 px-2 py-1 text-[10px] font-bold text-white hover:bg-white/20"
-                @click="copySql"
-              >
-                <Check v-if="copiedSql" :size="12" class="inline text-emerald-400" />
-                {{ copiedSql ? 'Copied' : 'Copy' }}
-              </button>
-            </div>
-          </div>
         </div>
       </div>
     </main>

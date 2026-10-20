@@ -40,6 +40,22 @@ function getApplication(userId) {
   return applications.value.find((app) => app.user_id === userId);
 }
 
+function openVerifyForStudent(person) {
+  activeModalApp.value = {
+    user_id: person.user_id,
+    organization: "Independent Educator",
+    professional_title: "Instructor",
+    expertise: "General Curriculum",
+    experience_years: 1,
+    qualification: "Directly Verified by Super Admin",
+    verification_url: "",
+    teaching_statement: "Verified account granted instructor privileges.",
+    status: "pending",
+    created_at: new Date().toISOString(),
+    profile: person,
+  };
+}
+
 async function handleModalReview({ application, status, notes }) {
   updatingUserId.value = application.user_id;
   await reviewApplication(application, status, notes);
@@ -220,7 +236,15 @@ async function handleDemote(user) {
                   class="inline-flex items-center gap-1 rounded border border-primary/30 bg-primary/5 px-2.5 py-1 text-xs font-bold text-primary hover:bg-primary/10"
                   @click="activeModalApp = getApplication(person.user_id)"
                 >
-                  <Eye :size="12" /> Verify
+                  <Eye :size="12" /> Dossier
+                </button>
+                <button
+                  v-else-if="person.role === 'student'"
+                  type="button"
+                  class="inline-flex items-center gap-1 rounded border border-emerald-600/30 bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-800 hover:bg-emerald-100"
+                  @click="openVerifyForStudent(person)"
+                >
+                  <UserCheck :size="12" /> Verify
                 </button>
 
                 <div v-if="person.role === 'instructor'">
@@ -236,9 +260,6 @@ async function handleDemote(user) {
                 </div>
                 <span v-else-if="person.role === 'super_admin'" class="text-xs font-semibold text-emerald-700">
                   Owner
-                </span>
-                <span v-else-if="!getApplication(person.user_id)" class="text-xs text-muted-foreground">
-                  Standard
                 </span>
               </div>
             </td>
