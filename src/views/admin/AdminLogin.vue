@@ -206,7 +206,7 @@ const handleAdminLogin = async () => {
 
         <!-- Security Notice -->
         <div class="mt-6 rounded-lg border border-white/5 bg-black/30 p-3 text-[11px] text-slate-400 leading-relaxed text-center">
-          Security policy: Only accounts assigned the <code class="font-mono text-emerald-300">super_admin</code> role can authenticate here.
+          Administrative gateway for authorized platform management personnel only.
         </div>
       </div>
     </main>
